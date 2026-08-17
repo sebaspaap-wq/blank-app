@@ -1,0 +1,132 @@
+"""Domeinbegrippen die door alle lagen heen gedeeld worden."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from enum import IntEnum, StrEnum
+
+
+def nu() -> datetime:
+    """Huidig tijdstip, altijd timezone-aware in UTC."""
+    return datetime.now(timezone.utc)
+
+
+def als_aware(waarde: datetime | None) -> datetime | None:
+    """Maak een datetime timezone-aware.
+
+    SQLite geeft naive datetimes terug waar PostgreSQL aware datetimes geeft.
+    Deze helper zorgt dat vergelijkingen (bijv. tier 2-deadlines) op beide
+    databases identiek werken.
+    """
+    if waarde is None:
+        return None
+    if waarde.tzinfo is None:
+        return waarde.replace(tzinfo=timezone.utc)
+    return waarde
+
+
+class Afdeling(StrEnum):
+    """De vier afdelingsagents plus de coordinerende directielaag.
+
+    De vier eerste waarden komen exact overeen met de sleutels van ``DEPT_LABEL``
+    in wosz-app.html, zodat de frontend ze zonder vertaalslag kan tonen.
+    """
+
+    MARKETING = "marketing"
+    MATCHING = "matching"
+    SUPPORT = "support"
+    FINANCIEEL = "financieel"
+    DIRECTIE = "directie"
+
+
+#: Afdelingen die de frontend als filterbare feed toont.
+AFDELINGSAGENTS: tuple[Afdeling, ...] = (
+    Afdeling.MARKETING,
+    Afdeling.MATCHING,
+    Afdeling.SUPPORT,
+    Afdeling.FINANCIEEL,
+)
+
+
+class Tier(IntEnum):
+    """Escalatieniveau volgens hoofdstuk 3 van de bouwopdracht.
+
+    ZELFSTANDIG  tier 1 — de agent handelt zelf af.
+    TENZIJ       tier 2 — de agent voert uit, tenzij Sebas binnen X uur ingrijpt.
+    WACHT        tier 3 — de agent doet niets tot Sebas expliciet kiest.
+    """
+
+    ZELFSTANDIG = 1
+    TENZIJ = 2
+    WACHT = 3
+
+
+class Urgentie(StrEnum):
+    """Urgentielabel zoals de frontend het rendert (``decision-badge``)."""
+
+    DRINGEND = "dringend"
+    DEZE_WEEK = "deze-week"
+
+
+class BeslissingStatus(StrEnum):
+    OPEN = "open"
+    UITGEVOERD = "uitgevoerd"
+    AFGEWEZEN = "afgewezen"
+    VERLOPEN_UITGEVOERD = "verlopen-uitgevoerd"
+
+
+class ShiftStatus(StrEnum):
+    OPEN = "open"
+    DEELS_GEMATCHT = "deels-gematcht"
+    GEMATCHT = "gematcht"
+    GEANNULEERD = "geannuleerd"
+
+
+class MatchStatus(StrEnum):
+    VOORGESTELD = "voorgesteld"
+    BEVESTIGD = "bevestigd"
+    GEWERKT = "gewerkt"
+    NO_SHOW = "no-show"
+    GEANNULEERD = "geannuleerd"
+
+
+class EventStatus(StrEnum):
+    PENDING = "pending"
+    VERWERKT = "verwerkt"
+    MISLUKT = "mislukt"
+
+
+class UitbetalingStatus(StrEnum):
+    """Statussen van een uitbetalingsopdracht.
+
+    Let op wat hier ontbreekt: er is geen status "betaald door het systeem".
+    Het systeem kan geen geld verplaatsen. ``KLAAR_VOOR_EXPORT`` betekent dat
+    Sebas het bedrag zelf bij de bank overmaakt; ``HANDMATIG_VOLDAAN`` legt
+    achteraf vast dat hij dat gedaan heeft.
+    """
+
+    CONCEPT = "concept"
+    KLAAR_VOOR_EXPORT = "klaar-voor-export"
+    GEEXPORTEERD = "geexporteerd"
+    HANDMATIG_VOLDAAN = "handmatig-voldaan"
+    GEANNULEERD = "geannuleerd"
+
+
+#: Levelsysteem — drempels en bonussen exact zoals wosz-app.html ze toont.
+LEVELS: tuple[dict, ...] = (
+    {"level": 1, "naam": "Beach Starter", "vanaf": 0, "bonus": 0, "icon": "\U0001f3d6️"},
+    {"level": 2, "naam": "Shift Regular", "vanaf": 25, "bonus": 10, "icon": "⭐"},
+    {"level": 3, "naam": "Vaste Kracht", "vanaf": 60, "bonus": 20, "icon": "\U0001f525"},
+    {"level": 4, "naam": "Kern van het Team", "vanaf": 120, "bonus": 35, "icon": "\U0001f4aa"},
+    {"level": 5, "naam": "WOSZ Legend", "vanaf": 200, "bonus": 50, "icon": "\U0001f451"},
+    {"level": 6, "naam": "Seizoenslegende", "vanaf": 300, "bonus": 75, "icon": "\U0001f3c6"},
+)
+
+
+def level_voor_uren(seizoen_uren: float) -> dict:
+    """Bepaal het level dat hoort bij het aantal gewerkte seizoensuren."""
+    huidig = LEVELS[0]
+    for lv in LEVELS:
+        if seizoen_uren >= lv["vanaf"]:
+            huidig = lv
+    return huidig

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WOSZ — AI-organisatie architectuur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0C2B33; --ink-2:#123B47; --ink-3:#0A2229;
+    --sand:#F2E8D5; --coral:#FF6B47; --coral-dim:#E85A38; --gold:#E8AC4D;
+    --cream:#FBF4E6; --dark-text:#12242A; --green:#1E7A4C;
+    --disp:'Bricolage Grotesque', system-ui, sans-serif;
+    --body:'Instrument Sans', system-ui, sans-serif;
+    --mono:'Space Mono', monospace;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:var(--body); background:var(--cream); color:var(--dark-text); padding:48px 24px 100px; }
+  h1,h2,h3{ font-family:var(--disp); font-weight:800; letter-spacing:-0.01em; }
+  .wrap{ max-width:1100px; margin:0 auto; }
+
+  header{ margin-bottom:44px; }
+  .eyebrow{ font-family:var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:0.12em; color:var(--coral); display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+  .eyebrow::before{ content:''; width:7px; height:7px; border-radius:50%; background:var(--coral); }
+  header h1{ font-size:30px; color:var(--ink); }
+  header p{ font-size:15px; color:rgba(18,36,42,0.65); margin-top:10px; max-width:640px; line-height:1.6; }
+
+  .layer{ margin-bottom:8px; }
+  .layer-label{ font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:rgba(18,36,42,0.45); margin-bottom:12px; text-align:center; }
+
+  .node{
+    border-radius:16px; padding:18px 20px; text-align:center; position:relative;
+  }
+  .node h3{ font-size:15px; margin-bottom:4px; }
+  .node p{ font-size:12px; opacity:0.8; line-height:1.4; }
+
+  .node-sebas{ background:var(--ink); color:var(--cream); max-width:320px; margin:0 auto 6px; box-shadow:0 20px 40px -18px rgba(0,0,0,0.35); }
+  .node-directie{ background:linear-gradient(135deg, var(--coral), var(--coral-dim)); color:var(--cream); max-width:420px; margin:0 auto; box-shadow:0 20px 40px -18px rgba(0,0,0,0.3); }
+
+  .connector{ display:flex; justify-content:center; padding:10px 0; }
+  .connector span{ font-family:var(--mono); font-size:11px; color:rgba(18,36,42,0.4); }
+  .connector.dashed::before{ content:''; }
+
+  .agents-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:10px 0 6px; }
+  @media (max-width:800px){ .agents-row{ grid-template-columns:repeat(2,1fr); } }
+  .agent{
+    background:#fff; border:2px solid var(--ink); border-radius:16px; padding:18px 16px;
+  }
+  .agent .ic{ font-size:22px; margin-bottom:6px; display:block; }
+  .agent h3{ font-size:14.5px; color:var(--ink); margin-bottom:6px; }
+  .agent ul{ list-style:none; text-align:left; }
+  .agent li{ font-size:11.5px; color:rgba(18,36,42,0.65); padding:3px 0 3px 14px; position:relative; }
+  .agent li::before{ content:'→'; position:absolute; left:0; color:var(--coral); }
+
+  .collab-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:10px; }
+  @media (max-width:800px){ .collab-row{ grid-template-columns:repeat(2,1fr); } }
+  .collab{ text-align:center; font-family:var(--mono); font-size:10.5px; color:rgba(18,36,42,0.5); padding:0 6px; }
+
+  .ext-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:6px; }
+  @media (max-width:800px){ .ext-row{ grid-template-columns:repeat(2,1fr); } }
+  .ext{ background:var(--sand); border:1px dashed rgba(18,36,42,0.3); border-radius:12px; padding:12px 14px; text-align:center; }
+  .ext .ic{ font-size:16px; display:block; margin-bottom:4px; }
+  .ext span{ font-family:var(--mono); font-size:11px; color:rgba(18,36,42,0.65); }
+
+  .legend{ display:flex; gap:24px; justify-content:center; margin-top:36px; flex-wrap:wrap; }
+  .legend-item{ display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11.5px; color:rgba(18,36,42,0.6); }
+  .legend-line{ width:28px; height:2px; }
+  .legend-line.solid{ background:var(--ink); }
+  .legend-line.dashed{ background:repeating-linear-gradient(90deg, var(--coral) 0 6px, transparent 6px 10px); }
+
+  .notes{ margin-top:56px; }
+  .notes h2{ font-size:20px; color:var(--ink); margin-bottom:16px; }
+  .note-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:700px){ .note-grid{ grid-template-columns:1fr; } }
+  .note-card{ background:#fff; border:1px solid rgba(18,36,42,0.1); border-radius:14px; padding:18px 20px; }
+  .note-card h4{ font-family:var(--disp); font-size:14px; color:var(--ink); margin-bottom:8px; }
+  .note-card p{ font-size:13px; color:rgba(18,36,42,0.65); line-height:1.55; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">WOSZ — systeemarchitectuur</span>
+    <h1>Hoe de AI-organisatie is opgebouwd</h1>
+    <p>Vier gescheiden agents per afdeling, die onderling samenwerken en rapporteren aan een coördinerende directielaag. Belangrijke keuzes gaan altijd naar jou — nooit automatisch uitgevoerd.</p>
+  </header>
+
+  <div class="layer">
+    <div class="node node-sebas">
+      <h3>👤 Sebas — Directie (mens)</h3>
+      <p>Keurt belangrijke beslissingen goed · vertegenwoordigt WOSZ bij bedrijven</p>
+    </div>
+  </div>
+
+  <div class="connector"><span>↑ dagrapport &amp; beslissingen die goedkeuring nodig hebben ↑</span></div>
+
+  <div class="layer">
+    <div class="node node-directie">
+      <h3>🧭 Directie-agent (AI-coördinator)</h3>
+      <p>Verzamelt rapportages van alle afdelingen · signaleert beslissingen boven de drempel · stelt dagrapport samen · logt alles</p>
+    </div>
+  </div>
+
+  <div class="connector"><span>↑ statusupdates van elke afdeling ↑</span></div>
+
+  <div class="layer-label">Vier gescheiden afdelingsagents</div>
+  <div class="agents-row">
+    <div class="agent">
+      <span class="ic">🎯</span>
+      <h3>Marketing-agent</h3>
+      <ul>
+        <li>Social content maken &amp; plannen</li>
+        <li>Advertentiebudget bijsturen</li>
+        <li>A/B-testen beheren</li>
+      </ul>
+    </div>
+    <div class="agent">
+      <span class="ic">🔗</span>
+      <h3>Matching-agent</h3>
+      <ul>
+        <li>Shifts koppelen aan medewerkers</li>
+        <li>No-shows signaleren</li>
+        <li>Levelsysteem bijhouden</li>
+      </ul>
+    </div>
+    <div class="agent">
+      <span class="ic">💬</span>
+      <h3>Support-agent</h3>
+      <ul>
+        <li>Vragen beantwoorden (chatbot)</li>
+        <li>Onboarding-berichten</li>
+        <li>Escaleert conflicten naar mens</li>
+      </ul>
+    </div>
+    <div class="agent">
+      <span class="ic">€</span>
+      <h3>Financieel-agent</h3>
+      <ul>
+        <li>Uren berekenen &amp; facturen</li>
+        <li>Bonussen klaarzetten</li>
+        <li>Betaalt nooit zelf uit</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="collab-row">
+    <div class="collab">→ meldt wervingstekort aan Marketing</div>
+    <div class="collab">→ stuurt uren naar Financieel<br>→ meldt no-show aan Support</div>
+    <div class="collab">→ verstuurt waarschuwingen namens Matching</div>
+    <div class="collab">→ meldt uitbetaling ter goedkeuring bij Directie</div>
+  </div>
+
+  <div class="connector"><span>↓ acties &amp; data ↓</span></div>
+
+  <div class="layer-label">Externe koppelingen</div>
+  <div class="ext-row">
+    <div class="ext"><span class="ic">📱</span><span>Meta Ads API</span></div>
+    <div class="ext"><span class="ic">📅</span><span>WOSZ-app database</span></div>
+    <div class="ext"><span class="ic">✉️</span><span>WhatsApp / e-mail</span></div>
+    <div class="ext"><span class="ic">🏦</span><span>Betaal-API (menselijke goedkeuring vereist)</span></div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-line solid"></span> automatische data-uitwisseling</div>
+    <div class="legend-item"><span class="legend-line dashed"></span> vereist goedkeuring van Sebas</div>
+  </div>
+
+  <div class="notes">
+    <h2>Belangrijke ontwerpprincipes</h2>
+    <div class="note-grid">
+      <div class="note-card">
+        <h4>Gescheiden verantwoordelijkheden</h4>
+        <p>Elke agent heeft een eigen, afgebakende taak en eigen tools. Geen enkele agent kan buiten zijn eigen domein handelen — de Matching-agent kan bijvoorbeeld nooit zelf een uitbetaling doen.</p>
+      </div>
+      <div class="note-card">
+        <h4>Drie-lagen escalatie</h4>
+        <p>Tier 1: agent handelt zelfstandig af. Tier 2: agent voert uit, tenzij Sebas binnen X uur ingrijpt. Tier 3: agent wacht altijd op expliciete keuze van Sebas voordat er iets gebeurt.</p>
+      </div>
+      <div class="note-card">
+        <h4>Geld gaat nooit automatisch de deur uit</h4>
+        <p>De Financieel-agent bereidt uitbetalingen voor en berekent bedragen, maar keurt nooit zelf goed. Elke uitbetaling — bonussen, facturen — vereist een klik van Sebas in het directiedashboard.</p>
+      </div>
+      <div class="note-card">
+        <h4>Alles wordt gelogd</h4>
+        <p>Elke actie van elke agent komt in het activiteitenlog terecht, doorzoekbaar en per afdeling gefilterd — zodat Sebas op elk moment kan navragen wat er is gebeurd en waarom.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

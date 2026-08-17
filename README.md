@@ -1,25 +1,43 @@
-# 🎈 Blank app template
+# WOSZ — AI-organisatie
 
-A simple Streamlit app template for you to modify!
-
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
-
-### How to run it on your own machine
-
-Prerequisite: install `uv` if you don't already have it.
+Systeem van vier gescheiden AI-agents (Marketing, Matching, Support, Financieel)
+die de dagelijkse operatie van WOSZ uitvoeren, gecoordineerd door een
+Directie-agent die rapporteert aan Sebas.
 
 ```
-$ curl -LsSf https://astral.sh/uv/install.sh | sh
+backend/    FastAPI-backend met de agents, de escalatiemotor en de event-bus
+frontend/   wosz-app.html — het bestaande dashboard, gekoppeld aan de backend
+docs/       De bouwopdracht en het architectuuroverzicht
 ```
 
-1. Sync the dependencies
+## Aan de slag
 
-   ```
-   $ uv sync
-   ```
+```bash
+cd backend
+uv venv --python 3.11 .venv
+uv pip install --python .venv/bin/python -e ".[dev]"
+cp .env.example .env
+.venv/bin/python -m app.db.seed
+.venv/bin/python -m uvicorn app.main:app --reload
+```
 
-2. Run the app
+In een tweede terminal:
 
-   ```
-   $ uv run streamlit run streamlit_app.py
-   ```
+```bash
+cd frontend && python3 -m http.server 8090
+```
+
+Open <http://localhost:8090/wosz-app.html> en klik op **Demo: directie**.
+
+Volledige documentatie: [`backend/README.md`](backend/README.md).
+
+## Twee dingen om te weten voordat je verder bouwt
+
+**Geld gaat nooit automatisch de deur uit.** Er zit geen betaalintegratie in dit
+systeem. Uitbetalen kan alleen doordat Sebas het zelf doet, na goedkeuring in het
+dashboard. Dat is architecturaal afgedwongen, niet als regel voor een AI —
+zie [`backend/app/payouts/README.md`](backend/app/payouts/README.md).
+
+**De arbeidsrechtelijke toets komt eerst.** Randvoorwaarde 6.1 van de
+bouwopdracht: laat een arbeidsjurist beoordelen of het model onder de Waadi valt
+vóórdat hier echte medewerkersdata of transacties doorheen gaan.
