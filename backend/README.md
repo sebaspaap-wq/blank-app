@@ -12,6 +12,10 @@ nog niet is, staat verderop expliciet benoemd.
 
 ## Snel starten — gratis, lokaal, zonder API-key
 
+**De makkelijkste manier is dubbelklikken op `start.command` (Mac/Linux) of
+`start-windows.bat` (Windows) in de hoofdmap.** Dat script doet alles hieronder
+voor je. De rest van deze sectie is voor wie het liever zelf typt.
+
 Het systeem draait volledig zonder Anthropic-key en zonder database-installatie.
 Je betaalt dus niets en er gaat geen enkele aanvraag het internet op.
 
@@ -32,7 +36,8 @@ uv venv --python 3.11 .venv
 uv pip install --python .venv/bin/python -e .
 
 cp .env.example .env          # standaard al goed: SQLite, geen API-key
-.venv/bin/python -m app.db.seed
+.venv/bin/python -m app.db.seed    # voorbeeldgegevens
+.venv/bin/python -m app.db.demo    # laat de agents één ronde draaien
 .venv/bin/python -m uvicorn app.main:app --reload
 ```
 
@@ -50,7 +55,8 @@ Open <http://localhost:8090/wosz-app.html> en klik op **Demo: directie**.
 
 ### Iets doen, en het zien gebeuren
 
-Het dashboard is leeg tot de agents iets gedaan hebben. Zet ze aan het werk:
+`app.db.demo` heeft de agents al één ronde laten draaien, dus het dashboard is
+gevuld. Wil je ze nog iets laten doen:
 
 ```bash
 curl -X POST localhost:8000/api/matching/run

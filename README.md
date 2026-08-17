@@ -12,31 +12,32 @@ frontend/   wosz-app.html — het bestaande dashboard, gekoppeld aan de backend
 docs/       De bouwopdracht en het architectuuroverzicht
 ```
 
-## Aan de slag — gratis en lokaal
+## Aan de slag
 
-Het systeem draait volledig zonder Anthropic-key en zonder database-installatie.
-Je hebt alleen [`uv`](https://docs.astral.sh/uv/) nodig.
+**Dubbelklik op het startbestand.** Meer is het niet.
 
-```bash
-cd backend
-uv venv --python 3.11 .venv
-uv pip install --python .venv/bin/python -e .
-cp .env.example .env          # standaard al goed: SQLite, geen API-key
-.venv/bin/python -m app.db.seed
-.venv/bin/python -m uvicorn app.main:app --reload
-```
+| Jouw computer | Bestand |
+|---|---|
+| Mac | `start.command` |
+| Windows | `start-windows.bat` |
+| Linux | `start.command` |
 
-In een tweede terminal:
+Er opent een zwart venster met tekst. Dat hoort zo — laat het openstaan. De
+eerste keer duurt het een paar minuten (er wordt van alles geïnstalleerd);
+daarna is het een paar seconden. Als het klaar is, opent je browser vanzelf
+met het dashboard. Klik daar op **Demo: directie**.
 
-```bash
-cd frontend && python3 -m http.server 8090
-```
+**Stoppen:** sluit dat zwarte venster.
 
-Open <http://localhost:8090/wosz-app.html> en klik op **Demo: directie**.
+Op een Mac kan de eerste keer een waarschuwing komen dat het bestand van een
+onbekende maker is. Klik dan met de rechtermuisknop op `start.command`, kies
+*Openen*, en daarna nog een keer *Openen*.
 
-Zonder API-key beslissen de agents op vaste regels in plaats van met Claude;
-al het andere werkt hetzelfde. Zie [`backend/README.md`](backend/README.md) voor
-de volledige uitleg en de eerste commando's om de agents aan het werk te zetten.
+Je hebt geen API-key nodig en je betaalt niets. Zonder key beslissen de agents
+op vaste regels in plaats van met Claude; verder werkt alles hetzelfde.
+
+Werkt het niet, of wil je liever zelf de commando's typen? Dan staat de
+uitgebreide uitleg in [`backend/README.md`](backend/README.md).
 
 ## Twee dingen om te weten voordat je verder bouwt
 
