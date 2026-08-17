@@ -4,9 +4,9 @@ Backend voor de vier gescheiden afdelingsagents (Marketing, Matching, Support,
 Financieel) en de coordinerende Directie-agent, zoals beschreven in
 [`docs/wosz-ai-systeem-bouwopdracht.md`](../docs/wosz-ai-systeem-bouwopdracht.md).
 
-**Status: Fase 1 en 2 af.** Matching, Support en Financieel draaien op echte
-data en voeden het bestaande directiedashboard. Marketing volgt in Fase 3; wat
-daarvan nu al bestaat, staat verderop expliciet benoemd.
+**Status: alle vier de agents draaien.** Matching, Support, Financieel en
+Marketing werken op echte data en voeden het bestaande directiedashboard. Wat er
+nog niet is, staat verderop expliciet benoemd.
 
 ---
 
@@ -60,6 +60,7 @@ app/
     matching.py    Matching-agent
     support.py     Support-agent: kennisbank, onboarding, escalatie
     financieel.py  Financieel-agent: uren, facturen, bonussen
+    marketing.py   Marketing-agent: content-kalender, budget, resultaten
     directie.py    Coordinator: dagrapport, tellers, beslissingen
   api/
     schemas.py     Het contract met wosz-app.html
@@ -67,14 +68,15 @@ app/
     matching.py    /api/matching/*
     support.py     /api/support/*
     financieel.py  /api/financieel/*
+    marketing.py   /api/marketing/*
   payouts/         Uitbetalingen — lees de README in die map
   db/              ORM-model, sessies, seed
 ```
 
 De lagen zijn bewust gescheiden: `db` weet niets van agents, `agents` weet niets
-van HTTP, en `api` bevat geen bedrijfslogica. Fase 2 voegde `agents/support.py` en
-`agents/financieel.py` toe zonder dat er iets aan de bestaande lagen veranderde;
-Fase 3 doet hetzelfde met Marketing.
+van HTTP, en `api` bevat geen bedrijfslogica. Elke fase voegde een agent toe
+zonder dat er iets aan de bestaande lagen veranderde — dat was de opzet en het
+heeft standgehouden.
 
 ---
 
@@ -210,6 +212,40 @@ bewaakt dat.
 
 ---
 
+## De Marketing-agent
+
+Plant social content op de kalender, stuurt advertentiebudget bij, en beoordeelt
+campagneresultaten.
+
+Paragraaf 3.1 geeft deze agent tier 1 voor "contentplanning binnen bestaande
+huisstijl" en "kleine budgetschuiven binnen bandbreedte". Dat is hier zo
+gebouwd dat de grenzen niet van goed gedrag afhangen:
+
+| Grens | Hoe die vaststaat |
+|---|---|
+| Er wordt niets gepubliceerd | Er is geen Meta Ads-koppeling en geen social-koppeling. De kalender is een werklijst; Sebas plaatst de posts. |
+| Een budgetschuif kan geen nieuw geld maken | `verschuif_budget` is een overboeking: hetzelfde bedrag gaat er bij de ene campagne af als er bij de andere bij komt. Het totaal is behouden per constructie, niet per afspraak. |
+| Grote schuiven kunnen niet zelfstandig | Boven de bandbreedte gooit de tier 1-functie een `BandbreedteOverschredenError`. De agent kan hem niet forceren; er is geen tweede pad. |
+| De agent verzint geen nieuwe hoek | Content plannen kan alleen op een goedgekeurde hoek uit `huisstijl_hoeken`. Een nieuwe richting is tier 3. |
+| Posts noemen nooit een bedrag | Wat het model schrijft wordt gecontroleerd op bedragen en tarieven voordat het op de kalender komt. Wat iemand verdient verschilt per shift; dat hoort niet in een advertentie. |
+
+**Nieuw budget is altijd tier 3.** "Meer geld" en "geld anders verdelen" zijn
+twee verschillende methodes, en alleen de tweede is zelfstandig. Ook een
+afwijking van meer dan 25% ten opzichte van de verwachte kosten per aanmelding
+gaat naar Sebas — de agent pauzeert geen campagne op eigen houtje.
+
+**De lus met Matching is nu dicht.** Een `werving.tekort`-event leidt tot echte
+actie: de agent plant extra content voor de functie die openstaat, ruim vóór de
+shiftdatum, en verschuift bij twee of meer open plekken ook budget naar de
+campagne die op dat moment de goedkoopste aanmeldingen levert. In Fase 1 werd
+dat event alleen gelogd.
+
+Budgetwijzigingen komen op een werklijst (`GET /api/marketing/budgetmutaties`)
+die Sebas zelf doorvoert in Ads Manager — hetzelfde patroon als bij de
+uitbetalingen.
+
+---
+
 ## Endpoints
 
 ### Directie — voedt het dashboard
@@ -252,6 +288,24 @@ bewaakt dat.
 | `GET /api/financieel/facturen` | Factuurconcepten, eventueel per periode |
 | `POST /api/financieel/periodes/{periode}/afsluiten` | Rond de concepten van een periode af (tier 1) |
 
+### Marketing
+
+| Endpoint | Doet |
+|---|---|
+| `GET /api/marketing/kalender` | De content-kalender |
+| `POST /api/marketing/kalender` | Plan één item in (tier 1) |
+| `POST /api/marketing/kalender/weekplanning` | Vul de komende week (tier 1) |
+| `POST /api/marketing/kalender/{id}/gepubliceerd` | Vink af dat je hem hebt geplaatst |
+| `POST /api/marketing/kalender/{id}/afwijzen` | Haal een item van de kalender |
+| `GET /api/marketing/campagnes` | Campagnes met budget en bandbreedte |
+| `POST /api/marketing/campagnes/budget/verschuiven` | Verschuif budget (tier 1 binnen de bandbreedte) |
+| `POST /api/marketing/campagnes/budget/verhogen` | Vraag nieuw budget (tier 3) |
+| `GET /api/marketing/budgetmutaties` | Werklijst voor Ads Manager |
+| `POST /api/marketing/budgetmutaties/{id}/doorgevoerd` | Vink af dat je hem hebt doorgevoerd |
+| `POST /api/marketing/hoeken/voorstellen` | Stel een nieuwe hoek voor (tier 3) |
+| `POST /api/marketing/resultaten` | Voer dagcijfers in |
+| `POST /api/marketing/resultaten/beoordelen` | Vergelijk met de verwachting |
+
 ### Waarom de veldnamen zijn zoals ze zijn
 
 De API is op de bestaande frontend gebouwd, niet andersom. Twee details die
@@ -271,21 +325,23 @@ makkelijk misgaan en daarom in `tests/test_api_contract.py` vastliggen:
 
 Eerlijk overzicht, zodat niemand verrast wordt:
 
-- **Marketing-agent**: bestaat nog niet. `app/agents/ontvangst_marketing.py` legt
-  het wervingstekort vast in het log zodat de bus compleet is, maar plant geen
-  content en verschuift geen budget. Komt in Fase 3, samen met de Meta Ads-koppeling.
-- **Verzenden van berichten**: Support rendert berichten en zet ze in de outbox,
-  maar er is nog geen WhatsApp- of e-mailkoppeling. Dat is een bewuste keuze —
-  eerst de teksten beoordelen, dan pas aansluiten. Het WhatsApp Business-traject
-  bij Meta duurt sowieso.
+- **Niets gaat echt naar buiten.** Support rendert berichten in een outbox,
+  Marketing plant posts op een kalender, en budgetwijzigingen komen op een
+  werklijst. Er is geen WhatsApp-, e-mail-, social- of Meta Ads-koppeling. Dat
+  is een bewuste keuze: eerst beoordelen, dan pas aansluiten. De
+  Meta Business-verificatie en het WhatsApp Business-traject lopen sowieso.
 - **Directie-agent**: stelt het dagrapport samen uit echte data en beheert
-  beslissingen. Notificaties (push/e-mail/WhatsApp) bij tier 3 komen in Fase 3.
+  beslissingen. Notificaties (push/e-mail/WhatsApp) bij tier 3-items staan nog
+  open — die vragen om een kanaal, en dat is er nog niet.
+- **A/B-testen**: campagneresultaten worden vergeleken met een verwachting per
+  campagne. Een echte A/B-opzet met varianten binnen één campagne zit er nog
+  niet in.
 - **Authenticatie**: de API is nog open. Vóór livegang hoort hier minimaal
   tokenauthenticatie op de directie-endpoints.
-- **Migraties**: tabellen worden met `create_all` aangemaakt. Bij echte data hoort
-  Alembic erbij.
-- **Kennisbank beheren**: items komen nu uit de seed. Een schermpje om ze toe te
-  voegen en te bewerken hoort erbij zodra Sebas hem echt gaat vullen.
+- **Migraties**: tabellen worden met `create_all` aangemaakt. Bij echte data
+  hoort Alembic erbij.
+- **Beheerschermen**: kennisbank, huisstijl-hoeken en campagnes komen uit de
+  seed. Zodra Sebas ze echt gaat vullen, horen daar schermen bij.
 
 Zie ook randvoorwaarde 6.1 uit de bouwopdracht: de arbeidsrechtelijke toets
 (Waadi) hoort afgerond te zijn vóórdat hier echte medewerkersdata of transacties

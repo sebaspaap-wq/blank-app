@@ -117,6 +117,48 @@ class BerichtStatus(StrEnum):
     GEANNULEERD = "geannuleerd"
 
 
+class SocialKanaal(StrEnum):
+    """Kanalen waarop Marketing content plant."""
+
+    INSTAGRAM = "instagram"
+    TIKTOK = "tiktok"
+    FACEBOOK = "facebook"
+
+
+class ContentStatus(StrEnum):
+    """Status van een item op de content-kalender.
+
+    Let op wat hier ontbreekt: er is geen status die het systeem zelf zet nadat
+    het iets heeft gepubliceerd. Publiceren gebeurt buiten dit systeem om.
+    ``GEPUBLICEERD`` legt achteraf vast dat Sebas het heeft geplaatst.
+    """
+
+    VOORSTEL = "voorstel"
+    GEPLAND = "gepland"
+    GEPUBLICEERD = "gepubliceerd"
+    AFGEWEZEN = "afgewezen"
+
+
+class CampagneStatus(StrEnum):
+    ACTIEF = "actief"
+    GEPAUZEERD = "gepauzeerd"
+    CONCEPT = "concept"
+
+
+class BudgetmutatieStatus(StrEnum):
+    """Status van een voorgestelde budgetwijziging.
+
+    Net als bij uitbetalingen kan het systeem dit niet zelf doorvoeren: er is
+    geen Meta Ads-koppeling. ``KLAAR_VOOR_UITVOERING`` betekent dat Sebas de
+    wijziging zelf in Ads Manager doorvoert; ``DOORGEVOERD`` legt vast dat hij
+    dat gedaan heeft.
+    """
+
+    KLAAR_VOOR_UITVOERING = "klaar-voor-uitvoering"
+    DOORGEVOERD = "doorgevoerd"
+    GEANNULEERD = "geannuleerd"
+
+
 class VraagUitkomst(StrEnum):
     """Hoe de Support-agent een binnengekomen vraag heeft afgehandeld."""
 

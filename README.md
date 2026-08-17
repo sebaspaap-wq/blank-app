@@ -4,7 +4,7 @@ Systeem van vier gescheiden AI-agents (Marketing, Matching, Support, Financieel)
 die de dagelijkse operatie van WOSZ uitvoeren, gecoordineerd door een
 Directie-agent die rapporteert aan Sebas.
 
-**Status:** Matching, Support en Financieel draaien. Marketing volgt in Fase 3.
+**Status:** alle vier de agents draaien — Matching, Support, Financieel en Marketing.
 
 ```
 backend/    FastAPI-backend met de agents, de escalatiemotor en de event-bus

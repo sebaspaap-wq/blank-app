@@ -26,11 +26,12 @@ Twee details die makkelijk misgaan en daarom expliciet zijn vastgelegd:
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.domein import AFDELINGSAGENTS, Afdeling, als_aware
+from app.core.domein import AFDELINGSAGENTS, Afdeling, SocialKanaal, als_aware
 from app.db.models import Activiteit, Beslissing
 
 
@@ -231,6 +232,100 @@ class FactuurUit(BaseModel):
     status: str
 
 
+class ContentplanningIn(BaseModel):
+    """Body van ``POST /api/marketing/kalender``."""
+
+    hoek_id: int
+    geplande_datum: date
+    kanaal: SocialKanaal = SocialKanaal.INSTAGRAM
+    aanleiding: str = ""
+
+
+class ContentitemUit(BaseModel):
+    """Eén item op de content-kalender."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: int
+    geplande_datum: str = Field(serialization_alias="geplandeDatum")
+    kanaal: str
+    hoek: str
+    haak: str
+    concepttekst: str
+    aanleiding: str
+    status: str
+    door_llm: bool = Field(serialization_alias="doorLlm")
+
+    @classmethod
+    def van_model(cls, item, hoek_naam: str) -> "ContentitemUit":
+        return cls(
+            id=item.id,
+            geplande_datum=item.geplande_datum.isoformat(),
+            kanaal=item.kanaal,
+            hoek=hoek_naam,
+            haak=item.haak,
+            concepttekst=item.concepttekst,
+            aanleiding=item.aanleiding,
+            status=item.status,
+            door_llm=item.door_llm,
+        )
+
+
+class CampagneUit(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: int
+    naam: str
+    kanaal: str
+    status: str
+    dagbudget_eur: float = Field(serialization_alias="dagbudgetEur")
+    bandbreedte_pct: float = Field(serialization_alias="bandbreedtePct")
+    max_verschuiving_eur: float = Field(serialization_alias="maxVerschuivingEur")
+    verwachte_kosten_per_aanmelding_eur: float = Field(
+        serialization_alias="verwachteKostenPerAanmeldingEur"
+    )
+
+
+class BudgetverschuivingIn(BaseModel):
+    van_campagne_id: int
+    naar_campagne_id: int
+    bedrag_eur: float = Field(gt=0)
+    reden: str = Field(min_length=1, max_length=500)
+
+
+class BudgetverhogingIn(BaseModel):
+    campagne_id: int
+    extra_eur: float = Field(gt=0)
+    reden: str = Field(min_length=1, max_length=500)
+
+
+class BudgetmutatieUit(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: int
+    soort: str
+    van_campagne: str | None = Field(default=None, serialization_alias="vanCampagne")
+    naar_campagne: str | None = Field(default=None, serialization_alias="naarCampagne")
+    bedrag_eur: float = Field(serialization_alias="bedragEur")
+    reden: str
+    status: str
+
+
+class NieuweHoekIn(BaseModel):
+    naam: str = Field(min_length=1, max_length=120)
+    omschrijving: str = Field(min_length=1, max_length=1000)
+    reden: str = Field(min_length=1, max_length=500)
+
+
+class ResultaatIn(BaseModel):
+    campagne_id: int
+    datum: date
+    uitgaven_eur: float = Field(ge=0)
+    vertoningen: int = Field(ge=0, default=0)
+    klikken: int = Field(ge=0, default=0)
+    aanmeldingen: int = Field(ge=0, default=0)
+
+
 class UitbetalingUit(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -251,13 +346,21 @@ __all__ = [
     "ActiviteitUit",
     "BerichtUit",
     "BeslissingUit",
+    "BudgetmutatieUit",
+    "BudgetverhogingIn",
+    "BudgetverschuivingIn",
+    "CampagneUit",
+    "ContentitemUit",
+    "ContentplanningIn",
     "BeslissingenUit",
     "DagrapportUit",
     "DashboardUit",
     "FactuurUit",
     "KeuzeIn",
+    "NieuweHoekIn",
     "OnboardingIn",
     "OptieUit",
+    "ResultaatIn",
     "SjabloonUit",
     "UitbetalingUit",
     "UrenIn",

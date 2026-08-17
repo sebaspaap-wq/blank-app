@@ -17,7 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.domein import ShiftStatus, nu
 from app.db.models import (
     Bedrijf,
+    Campagne,
+    CampagneResultaat,
     Doelstelling,
+    Hoek,
     Kennisbankitem,
     Level,
     Referral,
@@ -130,6 +133,51 @@ KENNISBANK = [
 ]
 
 
+# Huisstijl-hoeken: (naam, omschrijving, toon, voorbeelden)
+#
+# Dit is de huisstijl waarbinnen de Marketing-agent zelfstandig mag plannen.
+# Een hoek die hier niet staat, is een nieuwe campagne-richting en dus tier 3.
+HOEKEN = [
+    (
+        "Geen zzp-gedoe",
+        "Werken aan het strand zonder inschrijving bij de KvK, zonder facturen "
+        "en zonder administratie achteraf.",
+        "Nuchter en direct. Spreek de frustratie aan die mensen kennen van "
+        "andere klusplatforms. Geen uitroeptekens.",
+        [
+            "Geen KvK, geen facturen, geen gedoe.",
+            "Werken op het strand zonder papierwinkel.",
+        ],
+    ),
+    (
+        "Vrienden-bonus",
+        "Samen met je vrienden werken op het strand, en er iets extra's aan "
+        "overhouden als je ze meeneemt.",
+        "Speels en sociaal. Richt je op groepjes die samen willen werken.",
+        [
+            "Neem je vrienden mee naar het strand.",
+            "Samen werken is minder werk.",
+        ],
+    ),
+    (
+        "Strandzomer",
+        "De sfeer van een zomer werken aan zee: zonsondergangen, vaste crew, "
+        "het strand als werkplek.",
+        "Warm en beeldend. Laat de zomer het werk verkopen.",
+        [
+            "Je kantoor heeft dit uitzicht niet.",
+            "Zonsondergang als einde van je dienst.",
+        ],
+    ),
+]
+
+# Campagnes: (naam, hoek-index, dagbudget_eur, verwachte kosten per aanmelding)
+CAMPAGNES = [
+    ("Geen zzp-gedoe", 0, 25.00, 4.50),
+    ("Vrienden-bonus", 1, 15.00, 6.00),
+]
+
+
 async def seed(s: AsyncSession) -> None:
     bestaat = await s.scalar(select(func.count()).select_from(User))
     if bestaat:
@@ -232,10 +280,62 @@ async def seed(s: AsyncSession) -> None:
         )
     )
 
+    hoeken: list[Hoek] = []
+    for naam, omschrijving, toon, voorbeelden in HOEKEN:
+        hoek = Hoek(
+            naam=naam,
+            omschrijving=omschrijving,
+            toon=toon,
+            voorbeelden=voorbeelden,
+            goedgekeurd=True,
+        )
+        s.add(hoek)
+        hoeken.append(hoek)
+    await s.flush()
+
+    campagnes: list[Campagne] = []
+    for naam, hoek_index, dagbudget, verwacht in CAMPAGNES:
+        campagne = Campagne(
+            naam=naam,
+            hoek_id=hoeken[hoek_index].id,
+            dagbudget_cent=round(dagbudget * 100),
+            verwachte_kosten_per_aanmelding_cent=round(verwacht * 100),
+        )
+        s.add(campagne)
+        campagnes.append(campagne)
+    await s.flush()
+
+    # Zeven dagen resultaten, zodat de agent iets te vergelijken heeft.
+    # "Geen zzp-gedoe" presteert duidelijk beter dan "Vrienden-bonus" —
+    # net als in de demo van het dashboard.
+    for dag in range(1, 8):
+        datum = vandaag - timedelta(days=dag)
+        s.add(
+            CampagneResultaat(
+                campagne_id=campagnes[0].id,
+                datum=datum,
+                uitgaven_cent=2500,
+                vertoningen=4200,
+                klikken=190,
+                aanmeldingen=6,
+            )
+        )
+        s.add(
+            CampagneResultaat(
+                campagne_id=campagnes[1].id,
+                datum=datum,
+                uitgaven_cent=1500,
+                vertoningen=2600,
+                klikken=80,
+                aanmeldingen=2,
+            )
+        )
+
     await s.commit()
     print(
         f"Seed klaar: {len(MEDEWERKERS)} medewerkers, {len(BEDRIJVEN)} bedrijven, "
-        f"{len(shifts)} open shifts, {len(KENNISBANK)} kennisbankitems."
+        f"{len(shifts)} open shifts, {len(KENNISBANK)} kennisbankitems, "
+        f"{len(HOEKEN)} hoeken, {len(CAMPAGNES)} campagnes."
     )
 
 

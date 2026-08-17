@@ -27,9 +27,13 @@ from app.core.domein import (
     Afdeling,
     BerichtStatus,
     BeslissingStatus,
+    BudgetmutatieStatus,
+    CampagneStatus,
+    ContentStatus,
     EventStatus,
     MatchStatus,
     ShiftStatus,
+    SocialKanaal,
     Tier,
     UitbetalingStatus,
     Urgentie,
@@ -337,6 +341,125 @@ class Supportvraag(Base):
     aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
 
 
+class Hoek(Base):
+    """Een door Sebas goedgekeurde invalshoek binnen de huisstijl.
+
+    Paragraaf 3.1 geeft de Marketing-agent tier 1 voor "contentplanning binnen
+    bestaande huisstijl". Deze tabel is die huisstijl: de agent mag zelfstandig
+    content plannen op een hoek die hier staat. Een nieuwe hoek bedenken is
+    een nieuwe campagne-richting en dus tier 3.
+    """
+
+    __tablename__ = "huisstijl_hoeken"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    naam: Mapped[str] = mapped_column(String(120), nullable=False)
+    omschrijving: Mapped[str] = mapped_column(Text, default="")
+    toon: Mapped[str] = mapped_column(Text, default="")
+    voorbeelden: Mapped[list[str]] = mapped_column(JSON, default=list)
+    goedgekeurd: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+
+
+class Campagne(Base):
+    """Een lopende advertentiecampagne.
+
+    ``dagbudget_cent`` is wat er volgens WOSZ' eigen administratie per dag naar
+    deze campagne gaat. Het systeem zet dat niet in Meta Ads Manager — daar is
+    geen koppeling voor. Zie ``Budgetmutatie``.
+    """
+
+    __tablename__ = "campagnes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    naam: Mapped[str] = mapped_column(String(120), nullable=False)
+    hoek_id: Mapped[int | None] = mapped_column(ForeignKey("huisstijl_hoeken.id"))
+    kanaal: Mapped[str] = mapped_column(String(20), default=SocialKanaal.INSTAGRAM)
+    dagbudget_cent: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default=CampagneStatus.ACTIEF)
+
+    #: Maximaal percentage van het eigen dagbudget dat per dag verschoven mag
+    #: worden zonder goedkeuring (paragraaf 3.1: bijv. 20%).
+    bandbreedte_pct: Mapped[float] = mapped_column(Float, default=20.0)
+
+    #: Waar we op mikken, om afwijkingen te kunnen signaleren.
+    verwachte_kosten_per_aanmelding_cent: Mapped[int] = mapped_column(Integer, default=0)
+
+    aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+
+
+class CampagneResultaat(Base):
+    """Dagcijfers per campagne, handmatig of via een import ingevoerd."""
+
+    __tablename__ = "campagne_resultaten"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    campagne_id: Mapped[int] = mapped_column(ForeignKey("campagnes.id"), nullable=False)
+    datum: Mapped[date] = mapped_column(Date, nullable=False)
+    uitgaven_cent: Mapped[int] = mapped_column(Integer, default=0)
+    vertoningen: Mapped[int] = mapped_column(Integer, default=0)
+    klikken: Mapped[int] = mapped_column(Integer, default=0)
+    aanmeldingen: Mapped[int] = mapped_column(Integer, default=0)
+
+    @property
+    def kosten_per_aanmelding_cent(self) -> int | None:
+        if not self.aanmeldingen:
+            return None
+        return round(self.uitgaven_cent / self.aanmeldingen)
+
+
+class Contentitem(Base):
+    """Eén item op de content-kalender.
+
+    De agent plant items; publiceren doet hij niet en kan hij niet. Er is geen
+    koppeling met een social-platform. ``GEPUBLICEERD`` wordt achteraf door
+    Sebas gezet.
+    """
+
+    __tablename__ = "contentitems"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    geplande_datum: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    kanaal: Mapped[str] = mapped_column(String(20), default=SocialKanaal.INSTAGRAM)
+    hoek_id: Mapped[int] = mapped_column(ForeignKey("huisstijl_hoeken.id"), nullable=False)
+    campagne_id: Mapped[int | None] = mapped_column(ForeignKey("campagnes.id"))
+
+    haak: Mapped[str] = mapped_column(String(200), nullable=False)
+    concepttekst: Mapped[str] = mapped_column(Text, default="")
+    aanleiding: Mapped[str] = mapped_column(String(200), default="")
+    status: Mapped[str] = mapped_column(String(20), default=ContentStatus.GEPLAND)
+    door_llm: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+    gepubliceerd_op: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Budgetmutatie(Base):
+    """Een voorgestelde budgetwijziging die Sebas zelf doorvoert.
+
+    Dit is het marketing-equivalent van ``Uitbetalingsopdracht``: een
+    werkinstructie, geen API-aanroep. Het systeem heeft geen toegang tot Meta
+    Ads Manager.
+    """
+
+    __tablename__ = "budgetmutaties"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    van_campagne_id: Mapped[int | None] = mapped_column(ForeignKey("campagnes.id"))
+    naar_campagne_id: Mapped[int | None] = mapped_column(ForeignKey("campagnes.id"))
+    bedrag_cent: Mapped[int] = mapped_column(Integer, nullable=False)
+    reden: Mapped[str] = mapped_column(Text, default="")
+    soort: Mapped[str] = mapped_column(String(30), default="verschuiving")
+    status: Mapped[str] = mapped_column(
+        String(30), default=BudgetmutatieStatus.KLAAR_VOOR_UITVOERING
+    )
+
+    beslissing_id: Mapped[int | None] = mapped_column(ForeignKey("beslissingen.id"))
+    aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+    doorgevoerd_op: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Doelstelling(Base):
     """Voedt het ``voortgang``-blok van het dagrapport in de frontend."""
 
@@ -366,5 +489,10 @@ __all__ = [
     "Kennisbankitem",
     "Bericht",
     "Supportvraag",
+    "Hoek",
+    "Campagne",
+    "CampagneResultaat",
+    "Contentitem",
+    "Budgetmutatie",
     "Doelstelling",
 ]
