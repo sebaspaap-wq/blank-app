@@ -408,6 +408,57 @@ async def test_wervingstekort_leidt_tot_content(sessie, hoek):
     assert item.geplande_datum < date.fromisoformat(over_een_week)
 
 
+async def test_hetzelfde_tekort_levert_niet_steeds_nieuwe_content(sessie, hoek):
+    """Een openstaande shift geeft bij elke matching-run opnieuw een event.
+
+    Zonder deze controle liep de kalender vol met dezelfde post zodra de
+    scheduler een paar keer draaide.
+    """
+    over_een_week = (nu().date() + timedelta(days=7)).isoformat()
+    agent = MarketingAgent()
+
+    await agent.reageer_op_wervingstekort(
+        sessie,
+        WervingstekortGemeld(functie="keuken", open_plekken=2, datum=over_een_week),
+    )
+    # Tweede run: één plek inmiddels gevuld, maar hetzelfde tekort.
+    await agent.reageer_op_wervingstekort(
+        sessie,
+        WervingstekortGemeld(functie="keuken", open_plekken=1, datum=over_een_week),
+    )
+
+    items = (await sessie.execute(select(Contentitem))).scalars().all()
+    assert len(items) == 1
+
+    regels = (
+        (await sessie.execute(select(Activiteit).where(Activiteit.afdeling == "marketing")))
+        .scalars()
+        .all()
+    )
+    assert any("stond al op de kalender" in r.tekst for r in regels)
+
+
+async def test_ander_tekort_levert_wel_nieuwe_content(sessie, hoek):
+    """Een andere functie of een andere shiftdatum is een ander tekort."""
+    over_een_week = (nu().date() + timedelta(days=7)).isoformat()
+    over_twee_weken = (nu().date() + timedelta(days=14)).isoformat()
+    agent = MarketingAgent()
+
+    await agent.reageer_op_wervingstekort(
+        sessie, WervingstekortGemeld(functie="keuken", open_plekken=1, datum=over_een_week)
+    )
+    await agent.reageer_op_wervingstekort(
+        sessie, WervingstekortGemeld(functie="bar", open_plekken=1, datum=over_een_week)
+    )
+    await agent.reageer_op_wervingstekort(
+        sessie,
+        WervingstekortGemeld(functie="keuken", open_plekken=1, datum=over_twee_weken),
+    )
+
+    items = (await sessie.execute(select(Contentitem))).scalars().all()
+    assert len(items) == 3
+
+
 async def test_groot_tekort_stuurt_ook_budget_bij(sessie, hoek, campagnes):
     """Vanaf twee open plekken verschuift de agent ook budget (tier 1)."""
     goed, matig = campagnes

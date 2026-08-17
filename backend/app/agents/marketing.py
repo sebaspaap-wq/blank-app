@@ -542,6 +542,19 @@ class MarketingAgent(BaseAgent):
             )
             return
 
+        # Een openstaande shift levert bij elke matching-run opnieuw een event op.
+        # Zonder deze controle plant de agent er telkens weer content voor, en
+        # loopt de kalender vol met dezelfde post zodra de scheduler draait.
+        if await self._al_content_voor_tekort(sessie, event.functie, event.datum):
+            await self.rapporteer(
+                sessie,
+                (
+                    f"Wervingstekort voor {event.functie} op {event.datum} stond al "
+                    "op de kalender — geen extra post gepland"
+                ),
+            )
+            return
+
         # Plan de post ruim vóór de shift, anders komt de werving te laat.
         shiftdatum = date.fromisoformat(event.datum)
         geplande_datum = max(nu().date(), shiftdatum - timedelta(days=3))
@@ -664,6 +677,23 @@ class MarketingAgent(BaseAgent):
 
         scores.sort(key=lambda paar: (paar[0], paar[1].id))
         return [campagne for _, campagne in scores]
+
+    async def _al_content_voor_tekort(
+        self, sessie: AsyncSession, functie: str, shiftdatum: str
+    ) -> bool:
+        """Staat er al een post op de kalender voor dit tekort?
+
+        Herkent het tekort aan functie én shiftdatum, niet aan het aantal open
+        plekken: dat verandert zodra er iemand gematcht wordt, terwijl het om
+        hetzelfde tekort gaat.
+        """
+        resultaat = await sessie.execute(
+            select(Contentitem).where(
+                Contentitem.status == str(ContentStatus.GEPLAND),
+                Contentitem.aanleiding.like(f"%voor {functie} op {shiftdatum}%"),
+            )
+        )
+        return resultaat.scalars().first() is not None
 
     async def _al_gepland(self, sessie: AsyncSession, datum: date) -> bool:
         resultaat = await sessie.execute(

@@ -12,13 +12,16 @@ frontend/   wosz-app.html — het bestaande dashboard, gekoppeld aan de backend
 docs/       De bouwopdracht en het architectuuroverzicht
 ```
 
-## Aan de slag
+## Aan de slag — gratis en lokaal
+
+Het systeem draait volledig zonder Anthropic-key en zonder database-installatie.
+Je hebt alleen [`uv`](https://docs.astral.sh/uv/) nodig.
 
 ```bash
 cd backend
 uv venv --python 3.11 .venv
-uv pip install --python .venv/bin/python -e ".[dev]"
-cp .env.example .env
+uv pip install --python .venv/bin/python -e .
+cp .env.example .env          # standaard al goed: SQLite, geen API-key
 .venv/bin/python -m app.db.seed
 .venv/bin/python -m uvicorn app.main:app --reload
 ```
@@ -31,7 +34,9 @@ cd frontend && python3 -m http.server 8090
 
 Open <http://localhost:8090/wosz-app.html> en klik op **Demo: directie**.
 
-Volledige documentatie: [`backend/README.md`](backend/README.md).
+Zonder API-key beslissen de agents op vaste regels in plaats van met Claude;
+al het andere werkt hetzelfde. Zie [`backend/README.md`](backend/README.md) voor
+de volledige uitleg en de eerste commando's om de agents aan het werk te zetten.
 
 ## Twee dingen om te weten voordat je verder bouwt
 

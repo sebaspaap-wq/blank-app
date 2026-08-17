@@ -10,36 +10,86 @@ nog niet is, staat verderop expliciet benoemd.
 
 ---
 
-## Snel starten
+## Snel starten — gratis, lokaal, zonder API-key
+
+Het systeem draait volledig zonder Anthropic-key en zonder database-installatie.
+Je betaalt dus niets en er gaat geen enkele aanvraag het internet op.
+
+Je hebt alleen [`uv`](https://docs.astral.sh/uv/) nodig:
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Dan, in de map van dit project:
 
 ```bash
 cd backend
 uv venv --python 3.11 .venv
-uv pip install --python .venv/bin/python -e ".[dev]"
+uv pip install --python .venv/bin/python -e .
 
-cp .env.example .env          # vul je eigen waarden in
+cp .env.example .env          # standaard al goed: SQLite, geen API-key
 .venv/bin/python -m app.db.seed
 .venv/bin/python -m uvicorn app.main:app --reload
 ```
 
-De API draait dan op <http://localhost:8000>, met documentatie op `/docs`.
+Op Windows is het `.venv\Scripts\python` in plaats van `.venv/bin/python`.
 
-Het dashboard erbij:
+De API draait nu op <http://localhost:8000> (documentatie op `/docs`). Start in
+een **tweede terminal** het dashboard:
 
 ```bash
-cd ../frontend && python3 -m http.server 8090
-# open http://localhost:8090/wosz-app.html en klik "Demo: directie"
+cd frontend
+python3 -m http.server 8090
 ```
 
-Wijst je backend ergens anders heen, zet dan vóór het laden van de pagina
-`window.WOSZ_API_BASE = 'https://...'`. Vergeet niet die origin toe te voegen
-aan `WOSZ_CORS_ORIGINS`.
+Open <http://localhost:8090/wosz-app.html> en klik op **Demo: directie**.
 
-Tests draaien zonder netwerk en zonder PostgreSQL:
+### Iets doen, en het zien gebeuren
+
+Het dashboard is leeg tot de agents iets gedaan hebben. Zet ze aan het werk:
 
 ```bash
+curl -X POST localhost:8000/api/matching/run
+curl -X POST "localhost:8000/api/marketing/kalender/weekplanning?aantal=3"
+curl -X POST localhost:8000/api/support/vragen \
+  -H 'content-type: application/json' \
+  -d '{"vraag":"Hoe kan ik me afmelden voor mijn shift?","medewerker_id":2}'
+```
+
+Ververs het dashboard: het activiteitenlog, de afdelingsfeeds en het dagrapport
+vullen zich. Wil je liever klikken dan curl'en, gebruik dan <http://localhost:8000/docs>
+— daar staan alle endpoints met een "Try it out"-knop.
+
+Opnieuw beginnen: stop de server, verwijder `backend/wosz.db`, en draai de seed
+opnieuw.
+
+### Wat je mist zonder API-key
+
+Alles werkt, maar op vaste regels in plaats van met Claude:
+
+| Agent | Zonder key | Met key |
+|---|---|---|
+| Matching | Kiest op levelprioriteit, no-shows en spreiding | Claude kiest tussen kandidaten die op die punten gelijk staan, met onderbouwing |
+| Support | Zoekt op trefwoorden; geen duidelijke treffer = escaleren naar jou | Claude bepaalt welk kennisbankantwoord bij de vraag hoort |
+| Marketing | Gebruikt de voorbeeldteksten bij de hoek | Claude schrijft een nieuwe post binnen die hoek |
+
+De tier-escalatie, de event-bus, het activiteitenlog, de facturen, de
+uitbetalingen en de content-kalender werken in beide gevallen identiek. Wil je
+Claude er later bij, zet dan `ANTHROPIC_API_KEY` in je `.env` — verder verandert
+er niets.
+
+### Tests
+
+```bash
+uv pip install --python .venv/bin/python -e ".[dev]"
 .venv/bin/python -m pytest
 ```
+
+Draaien zonder netwerk en zonder PostgreSQL.
 
 ---
 
