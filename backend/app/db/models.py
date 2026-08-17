@@ -25,6 +25,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.core.domein import (
     Afdeling,
+    BerichtStatus,
     BeslissingStatus,
     EventStatus,
     MatchStatus,
@@ -271,6 +272,71 @@ class Uitbetalingsopdracht(Base):
     aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
 
 
+class Kennisbankitem(Base):
+    """Een door Sebas beoordeeld vraag-antwoordpaar.
+
+    Dit is de enige bron van inhoudelijke antwoorden die Support mag versturen.
+    De agent kiest welk item van toepassing is; hij schrijft het antwoord niet
+    zelf. Zo kan er nooit een toezegging naar buiten die geen mens heeft gezien.
+    """
+
+    __tablename__ = "kennisbank"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    vraag: Mapped[str] = mapped_column(Text, nullable=False)
+    antwoord: Mapped[str] = mapped_column(Text, nullable=False)
+    trefwoorden: Mapped[list[str]] = mapped_column(JSON, default=list)
+    categorie: Mapped[str] = mapped_column(String(40), default="algemeen")
+    actief: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Onderwerpen waar Support nooit zelfstandig op antwoordt, ook al staat er
+    # een goedgekeurd antwoord: geld, tarieven, contractvoorwaarden. De agent
+    # escaleert dan naar Sebas en vermeldt welk antwoord hij zou hebben gebruikt.
+    # Zo houdt Sebas de knop in handen zonder dat er code aangepast hoeft te worden.
+    vereist_mens: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+
+
+class Bericht(Base):
+    """Uitgaand bericht in de outbox.
+
+    ``inhoud`` is altijd het resultaat van een gerenderd sjabloon; er is geen
+    pad waarlangs een agent hier vrije tekst in krijgt. Zie app/agents/sjablonen.py.
+    """
+
+    __tablename__ = "berichten"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kanaal: Mapped[str] = mapped_column(String(20), nullable=False)
+    sjabloon: Mapped[str] = mapped_column(String(60), nullable=False)
+    ontvanger_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    ontvanger_naam: Mapped[str] = mapped_column(String(120), default="")
+    onderwerp: Mapped[str] = mapped_column(String(200), default="")
+    inhoud: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default=BerichtStatus.KLAAR)
+
+    aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+    verstuurd_op: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Supportvraag(Base):
+    """Een binnengekomen vraag en hoe Support hem heeft afgehandeld."""
+
+    __tablename__ = "supportvragen"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    vraag: Mapped[str] = mapped_column(Text, nullable=False)
+    steller_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    uitkomst: Mapped[str] = mapped_column(String(20), nullable=False)
+    kennisbankitem_id: Mapped[int | None] = mapped_column(ForeignKey("kennisbank.id"))
+    bericht_id: Mapped[int | None] = mapped_column(ForeignKey("berichten.id"))
+    beslissing_id: Mapped[int | None] = mapped_column(ForeignKey("beslissingen.id"))
+    door_llm: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+
+
 class Doelstelling(Base):
     """Voedt het ``voortgang``-blok van het dagrapport in de frontend."""
 
@@ -297,5 +363,8 @@ __all__ = [
     "Activiteit",
     "AgentEvent",
     "Uitbetalingsopdracht",
+    "Kennisbankitem",
+    "Bericht",
+    "Supportvraag",
     "Doelstelling",
 ]

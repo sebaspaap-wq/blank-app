@@ -15,7 +15,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.domein import ShiftStatus, nu
-from app.db.models import Bedrijf, Doelstelling, Level, Shift, User
+from app.db.models import (
+    Bedrijf,
+    Doelstelling,
+    Kennisbankitem,
+    Level,
+    Referral,
+    Shift,
+    User,
+)
 from app.db.session import maak_tabellen, sessie
 
 MEDEWERKERS = [
@@ -38,6 +46,87 @@ DOELEN = [
     ("Aanmeldingen deze week", 128, 200, False, 1),
     ("Actieve strandtenten", 6, 15, False, 2),
     ("Omzet deze maand", 1240, 2500, True, 3),
+]
+
+# Kennisbank: (vraag, antwoord, trefwoorden, categorie, vereist_mens)
+#
+# Antwoorden zijn de teksten die Support letterlijk verstuurt. Ze horen dus door
+# Sebas geschreven of nagelezen te zijn — de agent formuleert nooit zelf.
+#
+# ``vereist_mens=True`` markeert onderwerpen waar Support nooit automatisch op
+# antwoordt, ook al staat er een antwoord: geld, tarieven, contractvoorwaarden
+# (paragraaf 3.3). De agent escaleert dan naar Sebas en meldt welk antwoord hij
+# zou hebben gebruikt.
+KENNISBANK = [
+    (
+        "Hoe meld ik me af voor een shift?",
+        "Afmelden doe je in de app bij 'Mijn shifts'. Doe het zo snel mogelijk, "
+        "dan kunnen we op tijd iemand anders zoeken. Lukt het binnen 24 uur voor "
+        "de shift niet meer via de app, stuur dan even een bericht.",
+        ["afmelden", "afzeggen", "annuleren", "afmelding", "ziek"],
+        "shifts",
+        False,
+    ),
+    (
+        "Hoe werkt het levelsysteem?",
+        "Elk uur dat je werkt telt mee voor je level dit seizoen. Hoe hoger je "
+        "level, hoe eerder je mag reageren op nieuwe shifts. Je ziet je "
+        "voortgang in de app onder 'Levels'.",
+        ["level", "levels", "levelsysteem", "punten", "voortgang"],
+        "levels",
+        False,
+    ),
+    (
+        "Wat moet ik aantrekken tijdens een shift?",
+        "Meestal een zwart shirt en een zwarte broek, met dichte schoenen. "
+        "Sommige strandtenten hebben eigen kleding — dat staat dan bij de shift "
+        "vermeld. Twijfel je, vraag het even na bij het bedrijf.",
+        ["kleding", "aantrekken", "dresscode", "uniform", "schoenen"],
+        "praktisch",
+        False,
+    ),
+    (
+        "Hoe nodig ik een vriend uit?",
+        "In de app vind je onder 'Vrienden' je persoonlijke uitnodigingslink. "
+        "Deel die met wie je mee wilt krijgen; zodra hij of zij zich aanmeldt en "
+        "gaat werken, zie je de voortgang in je overzicht.",
+        ["vriend", "vrienden", "uitnodigen", "aanbrengen", "referral", "link"],
+        "vrienden",
+        False,
+    ),
+    (
+        "Ik kan niet inloggen in de app",
+        "Probeer eerst uit te loggen en opnieuw in te loggen met het e-mailadres "
+        "waarmee je je hebt aangemeld. Werkt dat niet, stuur dan een bericht met "
+        "het e-mailadres dat je gebruikt, dan kijken we mee.",
+        ["inloggen", "wachtwoord", "account", "login"],
+        "praktisch",
+        False,
+    ),
+    (
+        "Wanneer krijg ik uitbetaald?",
+        "Uitbetalingen worden per periode klaargezet en door WOSZ handmatig "
+        "gecontroleerd voordat ze de deur uitgaan.",
+        ["uitbetaling", "uitbetaald", "betaling", "geld", "loon", "salaris"],
+        "geld",
+        True,
+    ),
+    (
+        "Kan ik meer per uur verdienen?",
+        "Het uurloon wordt per shift door het bedrijf bepaald en staat bij de "
+        "shift vermeld.",
+        ["uurloon", "tarief", "verdienen", "loonsverhoging"],
+        "geld",
+        True,
+    ),
+    (
+        "Wat staat er in mijn overeenkomst?",
+        "De voorwaarden van je inzet staan in de overeenkomst die je bij "
+        "aanmelding hebt gekregen.",
+        ["contract", "overeenkomst", "voorwaarden", "opzeggen", "juridisch"],
+        "contract",
+        True,
+    ),
 ]
 
 
@@ -117,10 +206,36 @@ async def seed(s: AsyncSession) -> None:
             )
         )
 
+    for vraag, antwoord, trefwoorden, categorie, vereist_mens in KENNISBANK:
+        s.add(
+            Kennisbankitem(
+                vraag=vraag,
+                antwoord=antwoord,
+                trefwoorden=trefwoorden,
+                categorie=categorie,
+                vereist_mens=vereist_mens,
+            )
+        )
+
+    # Sanne heeft Tom aangebracht; Tom zit op 32 uur en heeft de 50-uursgrens
+    # dus nog niet gehaald. Werkt hij nog een shift, dan zet de Financieel-agent
+    # de vriendenbonus klaar ter goedkeuring (tier 3).
+    sanne = next(m for m in medewerkers if m.naam == "Sanne de Vries")
+    tom = next(m for m in medewerkers if m.naam == "Tom Hendriks")
+    s.add(
+        Referral(
+            medewerker_id=sanne.id,
+            vriend_id=tom.id,
+            uren_vriend=32.0,
+            bonus_status="bezig",
+            bonus_bedrag_cent=2000,
+        )
+    )
+
     await s.commit()
     print(
         f"Seed klaar: {len(MEDEWERKERS)} medewerkers, {len(BEDRIJVEN)} bedrijven, "
-        f"{len(shifts)} open shifts."
+        f"{len(shifts)} open shifts, {len(KENNISBANK)} kennisbankitems."
     )
 
 

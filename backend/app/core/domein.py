@@ -96,6 +96,34 @@ class EventStatus(StrEnum):
     MISLUKT = "mislukt"
 
 
+class Kanaal(StrEnum):
+    """Kanalen waarlangs Support berichten verstuurt."""
+
+    WHATSAPP = "whatsapp"
+    EMAIL = "email"
+
+
+class BerichtStatus(StrEnum):
+    """Status van een uitgaand bericht.
+
+    In Fase 2 is er nog geen WhatsApp- of e-mailkoppeling. Berichten worden
+    gerenderd en als ``KLAAR`` in de outbox gezet, zodat Sebas de teksten kan
+    beoordelen voordat er ooit iets echt de deur uitgaat. Het aansluiten van een
+    kanaal is dan alleen nog het invullen van de verzendstap.
+    """
+
+    KLAAR = "klaar"
+    VERSTUURD = "verstuurd"
+    GEANNULEERD = "geannuleerd"
+
+
+class VraagUitkomst(StrEnum):
+    """Hoe de Support-agent een binnengekomen vraag heeft afgehandeld."""
+
+    BEANTWOORD = "beantwoord"
+    GEESCALEERD = "geescaleerd"
+
+
 class UitbetalingStatus(StrEnum):
     """Statussen van een uitbetalingsopdracht.
 

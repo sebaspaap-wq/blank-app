@@ -175,6 +175,62 @@ class UrengeschilIn(BaseModel):
     uren_bedrijf: float = Field(gt=0, le=24)
 
 
+class VraagIn(BaseModel):
+    """Body van ``POST /api/support/vragen``."""
+
+    vraag: str = Field(min_length=1, max_length=2000)
+    medewerker_id: int
+
+
+class OnboardingIn(BaseModel):
+    medewerker_id: int
+
+
+class BerichtUit(BaseModel):
+    """Een bericht in de outbox, inclusief de volledige tekst."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: int
+    kanaal: str
+    sjabloon: str
+    ontvanger: str
+    onderwerp: str
+    inhoud: str
+    status: str
+
+    @classmethod
+    def van_model(cls, bericht) -> "BerichtUit":
+        return cls(
+            id=bericht.id,
+            kanaal=bericht.kanaal,
+            sjabloon=bericht.sjabloon,
+            ontvanger=bericht.ontvanger_naam,
+            onderwerp=bericht.onderwerp,
+            inhoud=bericht.inhoud,
+            status=bericht.status,
+        )
+
+
+class SjabloonUit(BaseModel):
+    naam: str
+    kanaal: str
+    onderwerp: str
+    body: str
+    variabelen: list[str]
+
+
+class FactuurUit(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: int
+    bedrijf: str
+    periode: str
+    uren: float
+    bedrag_eur: float = Field(serialization_alias="bedragEur")
+    status: str
+
+
 class UitbetalingUit(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -193,16 +249,21 @@ def afdeling_of_none(waarde: str) -> str | None:
 
 __all__ = [
     "ActiviteitUit",
+    "BerichtUit",
     "BeslissingUit",
     "BeslissingenUit",
     "DagrapportUit",
     "DashboardUit",
+    "FactuurUit",
     "KeuzeIn",
+    "OnboardingIn",
     "OptieUit",
+    "SjabloonUit",
     "UitbetalingUit",
     "UrenIn",
     "UrengeschilIn",
     "VoortgangUit",
+    "VraagIn",
     "afdeling_of_none",
     "Afdeling",
 ]

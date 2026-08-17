@@ -4,9 +4,9 @@ Backend voor de vier gescheiden afdelingsagents (Marketing, Matching, Support,
 Financieel) en de coordinerende Directie-agent, zoals beschreven in
 [`docs/wosz-ai-systeem-bouwopdracht.md`](../docs/wosz-ai-systeem-bouwopdracht.md).
 
-**Status: Fase 1 af.** De Matching-agent draait op echte data en voedt het
-bestaande directiedashboard. Support, Financieel en Marketing volgen in Fase 2
-en 3; wat daarvan nu al bestaat, staat verderop expliciet benoemd.
+**Status: Fase 1 en 2 af.** Matching, Support en Financieel draaien op echte
+data en voeden het bestaande directiedashboard. Marketing volgt in Fase 3; wat
+daarvan nu al bestaat, staat verderop expliciet benoemd.
 
 ---
 
@@ -56,21 +56,25 @@ app/
   agents/
     base.py        BaseAgent — het enige pad waarlangs een agent iets kan doen
     llm.py         Anthropic-koppeling (function calling)
-    matching.py    Matching-agent (Fase 1)
-    support.py     Support-agent, voorlopig alleen de no-show-waarschuwing
+    sjablonen.py   Berichtsjablonen — alles wat Support kan versturen
+    matching.py    Matching-agent
+    support.py     Support-agent: kennisbank, onboarding, escalatie
+    financieel.py  Financieel-agent: uren, facturen, bonussen
     directie.py    Coordinator: dagrapport, tellers, beslissingen
   api/
     schemas.py     Het contract met wosz-app.html
     directie.py    /api/directie/*
     matching.py    /api/matching/*
+    support.py     /api/support/*
+    financieel.py  /api/financieel/*
   payouts/         Uitbetalingen — lees de README in die map
   db/              ORM-model, sessies, seed
 ```
 
 De lagen zijn bewust gescheiden: `db` weet niets van agents, `agents` weet niets
-van HTTP, en `api` bevat geen bedrijfslogica. Fase 2 voegt naast
-`agents/matching.py` gewoon `agents/financieel.py` toe zonder dat er iets aan de
-bestaande lagen hoeft te veranderen.
+van HTTP, en `api` bevat geen bedrijfslogica. Fase 2 voegde `agents/support.py` en
+`agents/financieel.py` toe zonder dat er iets aan de bestaande lagen veranderde;
+Fase 3 doet hetzelfde met Marketing.
 
 ---
 
@@ -157,6 +161,55 @@ Escalatie: standaardmatches en levelupdates zijn tier 1; herhaalde no-shows
 
 ---
 
+## De Support-agent
+
+Beantwoordt vragen, verstuurt onboarding, en waarschuwt namens Matching bij
+no-shows.
+
+Paragraaf 3.3 eist dat Support **geen inhoudelijke toezeggingen doet over geld,
+tarieven of contractvoorwaarden**. Net als bij de uitbetalingen is dat hier geen
+instructie maar een constructie:
+
+| Grens | Hoe die vaststaat |
+|---|---|
+| De agent schrijft nooit de tekst die een medewerker leest | Versturen kan alleen via een geregistreerd sjabloon in `app/agents/sjablonen.py`. Er is geen parameter waarin vrije tekst mee kan liften. |
+| Sjablonen kunnen geen geld beloven | Bij registratie wordt elk sjabloon gecontroleerd op bedragen, tarieven en contractvoorwaarden. Een sjabloon dat dat bevat, laat de applicatie niet starten. |
+| Inhoudelijke antwoorden zijn door een mens geschreven | Antwoorden komen uit de kennisbank. Claude kiest wélk antwoord past; het formuleert er nooit een. Routeren, niet schrijven. |
+| Twijfel gaat naar Sebas | Klacht of conflict, vraag buiten de kennisbank, of een onderwerp met `vereist_mens`: allemaal tier 3. De agent gokt niet. |
+
+`GET /api/support/sjablonen` geeft de volledige verzameling teksten die ooit
+namens WOSZ verstuurd kan worden. Handig om periodiek door te lezen.
+
+**De `vereist_mens`-vlag is jouw knop.** Kennisbankitems over geld, tarieven en
+contracten staan standaard op `vereist_mens=True`: die worden nooit automatisch
+beantwoord, ook al staat er een goedgekeurd antwoord. De agent escaleert dan en
+vermeldt welk antwoord hij zou hebben gebruikt, zodat jij het met één klik kunt
+bevestigen. Vind je dat te streng voor een specifiek item, zet de vlag dan uit —
+dat is een datawijziging, geen codewijziging.
+
+Er gaat nog niets echt de deur uit: berichten worden gerenderd en als `klaar` in
+de outbox gezet (`GET /api/support/berichten`), zodat je de teksten kunt nalezen
+voordat er ooit een WhatsApp- of e-mailkoppeling op wordt aangesloten.
+
+---
+
+## De Financieel-agent
+
+Verwerkt gewerkte uren tot factuurconcepten per bedrijf per periode, en berekent
+level- en vriendenbonussen.
+
+Escalatie volgt paragraaf 3.4 letterlijk: uren verwerken en factuurconcepten
+opstellen is tier 1, en **élke uitbetaling is tier 3, zonder uitzondering**. Een
+factuur naar een bedrijf sturen valt daar niet onder — daar komt geld binnen, er
+gaat niets uit.
+
+Deze agent kan geen geld verplaatsen, en dat is geen kwestie van terughoudend
+zijn: hij kan `app.payouts` niet importeren. Hij verwijst naar de
+goedkeuringsuitvoerder alleen bij naam, als string in de beslissing. Een test
+bewaakt dat.
+
+---
+
 ## Endpoints
 
 ### Directie — voedt het dashboard
@@ -182,6 +235,23 @@ Escalatie: standaardmatches en levelupdates zijn tier 1; herhaalde no-shows
 | `POST /api/matching/matches/{id}/no-show` | Signaleer no-show (logt bij Matching én Support) |
 | `POST /api/matching/matches/{id}/urengeschil` | Leg een geschil voor (tier 3) |
 
+### Support
+
+| Endpoint | Doet |
+|---|---|
+| `POST /api/support/vragen` | Handel een binnengekomen vraag af (tier 1 of tier 3) |
+| `POST /api/support/onboarding` | Stuur het welkomstbericht (tier 1) |
+| `GET /api/support/berichten` | De outbox, met de volledige tekst |
+| `POST /api/support/berichten/{id}/verstuurd` | Leg vast dat een bericht is verstuurd |
+| `GET /api/support/sjablonen` | Alles wat Support kan versturen |
+
+### Financieel
+
+| Endpoint | Doet |
+|---|---|
+| `GET /api/financieel/facturen` | Factuurconcepten, eventueel per periode |
+| `POST /api/financieel/periodes/{periode}/afsluiten` | Rond de concepten van een periode af (tier 1) |
+
 ### Waarom de veldnamen zijn zoals ze zijn
 
 De API is op de bestaande frontend gebouwd, niet andersom. Twee details die
@@ -201,19 +271,21 @@ makkelijk misgaan en daarom in `tests/test_api_contract.py` vastliggen:
 
 Eerlijk overzicht, zodat niemand verrast wordt:
 
-- **Support-agent**: alleen de no-show-waarschuwing (tier 1 volgens §3.3). De
-  chatbot, de kennisbank en de tier 3-escalatie van klachten komen in Fase 2.
-- **Financieel-agent**: bestaat nog niet. `app/agents/ontvangst_fase1.py` bevat
-  minimale ontvangers die uren- en level-events vastleggen in het log, zodat de
-  bus nu al compleet is. Ze berekenen niets en zetten geen bedragen klaar.
-- **Marketing-agent**: idem — het wervingstekort wordt gelogd, meer niet.
+- **Marketing-agent**: bestaat nog niet. `app/agents/ontvangst_marketing.py` legt
+  het wervingstekort vast in het log zodat de bus compleet is, maar plant geen
+  content en verschuift geen budget. Komt in Fase 3, samen met de Meta Ads-koppeling.
+- **Verzenden van berichten**: Support rendert berichten en zet ze in de outbox,
+  maar er is nog geen WhatsApp- of e-mailkoppeling. Dat is een bewuste keuze —
+  eerst de teksten beoordelen, dan pas aansluiten. Het WhatsApp Business-traject
+  bij Meta duurt sowieso.
 - **Directie-agent**: stelt het dagrapport samen uit echte data en beheert
   beslissingen. Notificaties (push/e-mail/WhatsApp) bij tier 3 komen in Fase 3.
 - **Authenticatie**: de API is nog open. Vóór livegang hoort hier minimaal
   tokenauthenticatie op de directie-endpoints.
 - **Migraties**: tabellen worden met `create_all` aangemaakt. Bij echte data hoort
   Alembic erbij.
-- **Externe koppelingen**: Meta Ads en WhatsApp/e-mail zijn nog niet aangesloten.
+- **Kennisbank beheren**: items komen nu uit de seed. Een schermpje om ze toe te
+  voegen en te bewerken hoort erbij zodra Sebas hem echt gaat vullen.
 
 Zie ook randvoorwaarde 6.1 uit de bouwopdracht: de arbeidsrechtelijke toets
 (Waadi) hoort afgerond te zijn vóórdat hier echte medewerkersdata of transacties

@@ -95,6 +95,30 @@ def test_ook_niet_via_een_omweg():
         assert keten is None, "Indirect pad naar app.payouts: " + " -> ".join(keten)
 
 
+def test_financieel_agent_bereikt_de_uitbetalingsmodule_niet():
+    """De agent die met geld werkt, kan er nog steeds niet bij.
+
+    De Financieel-agent berekent bedragen en maakt conceptrecords, maar verwijst
+    naar de goedkeuringsuitvoerder alleen bij naam — als string in de beslissing.
+    Hij importeert app.payouts niet, en kan dat ook niet gaan doen zonder deze
+    test te breken.
+    """
+    from app.agents import financieel
+
+    pad = Path(financieel.__file__)
+    for naam in _imports_van(pad):
+        assert not naam.startswith(VERBODEN_PREFIX), (
+            f"De Financieel-agent importeert {naam}. Verwijs naar de uitvoerder "
+            "bij naam in plaats van de module te importeren."
+        )
+
+    # De uitvoerder wordt wel degelijk aangeroepen — via de registry, niet via een import.
+    from app.core.tiers import uitvoerder_bestaat
+
+    assert uitvoerder_bestaat(financieel.UITVOERDER_GOEDKEUREN)
+    assert uitvoerder_bestaat(financieel.UITVOERDER_AFWIJZEN)
+
+
 def test_agentconfiguratie_bevat_geen_betaalvelden():
     """Agents krijgen AgentSettings; daar zit structureel niets over geld in."""
     velden = set(AgentSettings.model_fields)

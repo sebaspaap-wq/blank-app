@@ -20,7 +20,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import directie as directie_api
+from app.api import financieel as financieel_api
 from app.api import matching as matching_api
+from app.api import support as support_api
 from app.config import get_settings
 from app.core.events import verwerk_pending
 from app.core.tiers import sweep_verlopen_tier2
@@ -28,8 +30,9 @@ from app.db.session import maak_tabellen, sessie
 
 # Deze imports hebben bijwerkingen: ze vullen de registries van de tier-engine
 # en de event-bus. Niet verwijderen omdat een linter ze "ongebruikt" noemt.
+from app.agents import financieel as _financieel_agent  # noqa: F401
 from app.agents import matching as _matching_agent  # noqa: F401
-from app.agents import ontvangst_fase1 as _ontvangers  # noqa: F401
+from app.agents import ontvangst_marketing as _marketing_ontvanger  # noqa: F401
 from app.agents import support as _support_agent  # noqa: F401
 from app import payouts as _payouts  # noqa: F401
 
@@ -113,6 +116,8 @@ def maak_app() -> FastAPI:
     )
     app.include_router(directie_api.router)
     app.include_router(matching_api.router)
+    app.include_router(support_api.router)
+    app.include_router(financieel_api.router)
 
     @app.get("/health", tags=["systeem"])
     async def health() -> dict[str, str]:

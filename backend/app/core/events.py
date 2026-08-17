@@ -118,10 +118,28 @@ class GeenHandlerError(RuntimeError):
     """Er is een event gepubliceerd waarvoor geen agent zich heeft aangemeld."""
 
 
+class DubbeleHandlerError(RuntimeError):
+    """Twee modules melden zich aan voor hetzelfde eventtype."""
+
+
 def handelt(event_type: type[Envelope]) -> Callable[[Handler], Handler]:
-    """Meld een agent aan als afhandelaar van één eventtype."""
+    """Meld een agent aan als afhandelaar van één eventtype.
+
+    Weigert een tweede aanmelding voor hetzelfde type. Zonder die controle zou
+    de laatst geïmporteerde module stilletjes winnen — precies het soort fout
+    dat pas in productie opvalt, bijvoorbeeld wanneer een echte agent een
+    tijdelijke ontvanger vervangt maar die oude import blijft staan.
+    """
 
     def _wrap(fn: Handler) -> Handler:
+        bestaand = _HANDLERS.get(event_type.EVENT_TYPE)
+        if bestaand is not None and bestaand is not fn:
+            raise DubbeleHandlerError(
+                f"Eventtype '{event_type.EVENT_TYPE}' heeft al een handler "
+                f"({bestaand.__module__}.{bestaand.__qualname__}); "
+                f"{fn.__module__}.{fn.__qualname__} probeert die te overschrijven. "
+                "Verwijder de oude ontvanger in plaats van er een naast te zetten."
+            )
         _HANDLERS[event_type.EVENT_TYPE] = fn
         return fn
 

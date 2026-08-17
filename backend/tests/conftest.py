@@ -26,8 +26,9 @@ from app.db.models import Base, Bedrijf, Doelstelling, Level, Shift, User
 from app.db.session import configureer_engine
 
 # Bijwerkingen: vullen de registries van de tier-engine en de event-bus.
+import app.agents.financieel  # noqa: F401,E402
 import app.agents.matching  # noqa: F401,E402
-import app.agents.ontvangst_fase1  # noqa: F401,E402
+import app.agents.ontvangst_marketing  # noqa: F401,E402
 import app.agents.support  # noqa: F401,E402
 import app.payouts  # noqa: F401,E402
 
