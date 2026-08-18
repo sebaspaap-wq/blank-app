@@ -13,7 +13,12 @@ from datetime import date, timedelta
 import pytest
 from sqlalchemy import select
 
-from app.agents.matching import ESCALEER_NA_DAGEN, HERINNER_NA_DAGEN, MatchingAgent
+from app.agents.matching import (
+    ATTENDERING_STILTE_DAGEN,
+    ESCALEER_NA_DAGEN,
+    HERINNER_NA_DAGEN,
+    MatchingAgent,
+)
 from app.core.domein import BeslissingStatus, MatchStatus, Tier
 from app.core.events import UrenOntbreken, verwerk_pending
 from app.db.models import AgentEvent, Bericht, Beslissing, Match, Shift
@@ -257,3 +262,105 @@ def test_geen_enkele_taak_raakt_uitbetalingen(sessie):
         bron = inspect.getsource(taak.werk)
         assert "payout" not in bron.lower()
         assert "uitbetal" not in bron.lower()
+
+
+# ---------------------------------------------------------------------------
+# Medewerkers wijzen op openstaande shifts (e-mailmarketing)
+# ---------------------------------------------------------------------------
+
+
+async def test_medewerker_wordt_gewezen_op_een_passende_shift(sessie, bedrijf, zaterdag):
+    medewerker = await maak_medewerker(
+        sessie, "Sanne", functies=["bediening"], dagen=["za"]
+    )
+    medewerker.email = "sanne@voorbeeld.nl"
+    await maak_shift(sessie, bedrijf, datum=zaterdag, functie="bediening")
+    await sessie.flush()
+
+    assert await MatchingAgent().attendeer_op_open_shifts(sessie) == ["Sanne"]
+
+    await verwerk_pending(sessie)
+    bericht = (await sessie.execute(select(Bericht))).scalars().one()
+    assert bericht.sjabloon == "shifts_beschikbaar"
+    assert "Bediening bij Strandtent Zuid" in bericht.inhoud
+
+
+async def test_de_mail_noemt_geen_bedragen(sessie, bedrijf, zaterdag):
+    """Een mail namens WOSZ die een uurloon noemt, leest als een toezegging."""
+    medewerker = await maak_medewerker(
+        sessie, "Sanne", functies=["bediening"], dagen=["za"]
+    )
+    medewerker.email = "sanne@voorbeeld.nl"
+    shift = await maak_shift(sessie, bedrijf, datum=zaterdag, functie="bediening")
+    shift.uurloon = "€13,50"
+    await sessie.flush()
+
+    await MatchingAgent().attendeer_op_open_shifts(sessie)
+    await verwerk_pending(sessie)
+
+    bericht = (await sessie.execute(select(Bericht))).scalars().one()
+    assert "€" not in bericht.inhoud
+    assert "13,50" not in bericht.inhoud
+
+
+async def test_wie_niet_op_de_shift_past_krijgt_geen_mail(sessie, bedrijf, zaterdag):
+    kok = await maak_medewerker(sessie, "Milan", functies=["keuken"], dagen=["za"])
+    kok.email = "milan@voorbeeld.nl"
+    await maak_shift(sessie, bedrijf, datum=zaterdag, functie="bediening")
+    await sessie.flush()
+
+    assert await MatchingAgent().attendeer_op_open_shifts(sessie) == []
+
+
+async def test_zonder_emailadres_geen_mail(sessie, bedrijf, zaterdag):
+    await maak_medewerker(sessie, "Sanne", functies=["bediening"], dagen=["za"])
+    await maak_shift(sessie, bedrijf, datum=zaterdag, functie="bediening")
+
+    assert await MatchingAgent().attendeer_op_open_shifts(sessie) == []
+
+
+async def test_niet_twee_dagen_achter_elkaar_dezelfde_mail(sessie, bedrijf, zaterdag):
+    """Zonder stilteperiode leer je mensen je berichten weg te klikken."""
+    medewerker = await maak_medewerker(
+        sessie, "Sanne", functies=["bediening"], dagen=["za"]
+    )
+    medewerker.email = "sanne@voorbeeld.nl"
+    await maak_shift(sessie, bedrijf, datum=zaterdag, functie="bediening", aantal=3)
+    await sessie.flush()
+
+    agent = MatchingAgent()
+    assert await agent.attendeer_op_open_shifts(sessie) == ["Sanne"]
+    assert await agent.attendeer_op_open_shifts(sessie) == []
+
+
+async def test_na_de_stilteperiode_mag_het_weer(sessie, bedrijf, zaterdag):
+    from datetime import timedelta as _td
+
+    from app.core.domein import nu
+
+    medewerker = await maak_medewerker(
+        sessie, "Sanne", functies=["bediening"], dagen=["za"]
+    )
+    medewerker.email = "sanne@voorbeeld.nl"
+    await maak_shift(sessie, bedrijf, datum=zaterdag, functie="bediening", aantal=3)
+    await sessie.flush()
+
+    agent = MatchingAgent()
+    await agent.attendeer_op_open_shifts(sessie)
+    medewerker.laatste_attendering_op = nu() - _td(days=ATTENDERING_STILTE_DAGEN + 1)
+    await sessie.flush()
+
+    assert await agent.attendeer_op_open_shifts(sessie) == ["Sanne"]
+
+
+async def test_een_shift_van_gisteren_levert_geen_mail_op(sessie, bedrijf):
+    medewerker = await maak_medewerker(
+        sessie, "Sanne", functies=["bediening"], dagen=list("ma di wo do vr za zo".split())
+    )
+    medewerker.email = "sanne@voorbeeld.nl"
+    await maak_shift(
+        sessie, bedrijf, datum=date.today() - timedelta(days=1), functie="bediening"
+    )
+    await sessie.flush()
+
+    assert await MatchingAgent().attendeer_op_open_shifts(sessie) == []

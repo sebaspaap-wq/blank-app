@@ -15,7 +15,7 @@ van die keuze gaat mee het activiteitenlog in.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -31,6 +31,7 @@ from app.core.domein import (
     ShiftStatus,
     Tier,
     Urgentie,
+    als_aware,
     level_voor_uren,
     nu,
 )
@@ -38,10 +39,12 @@ from app.core.events import (
     LevelBereikt,
     NoShowGesignaleerd,
     UrenGewerkt,
+    ShiftsBeschikbaar,
     UrenOntbreken,
     WervingstekortGemeld,
 )
 from app.core.tiers import Optie, Voorstel, registreer_uitvoerder
+from app.core.weergave import korte_datum
 from app.db.models import Beslissing, Level, Match, Reactie, Shift, User
 
 #: Weekdagafkortingen zoals ze in ``User.beschikbare_dagen`` staan.
@@ -57,6 +60,10 @@ HERINNER_NA_DAGEN = 1
 
 #: En zoveel dagen erna gaat de vraag met een termijn naar Sebas (tier 2).
 ESCALEER_NA_DAGEN = 4
+
+#: Minimaal aantal dagen tussen twee mails over openstaande shifts naar dezelfde
+#: medewerker. Vaker mailen levert geen extra reacties op, alleen afmeldingen.
+ATTENDERING_STILTE_DAGEN = 5
 
 SYSTEEMPROMPT = """Je bent de Matching-agent van WOSZ, een horecapersoneelsplatform in Zandvoort.
 
@@ -553,6 +560,74 @@ class MatchingAgent(BaseAgent):
                 herinnerd.append(medewerker.naam)
 
         return {"herinnerd": herinnerd, "geescaleerd": geescaleerd}
+
+    # -- medewerkers op openstaande shifts wijzen ---------------------------
+
+    async def attendeer_op_open_shifts(
+        self,
+        sessie: AsyncSession,
+        *,
+        stilte_dagen: int = ATTENDERING_STILTE_DAGEN,
+        maximum_per_mail: int = 5,
+    ) -> list[str]:
+        """Wijs medewerkers op shifts waar ze op kunnen reageren (tier 1).
+
+        Alleen shifts waarop deze persoon ook echt gekozen zou kunnen worden —
+        dezelfde harde criteria als bij het matchen. Een mail over een shift die
+        je toch niet krijgt, is geen service maar ruis.
+
+        Eén mail per medewerker per ``stilte_dagen``. Zonder die stilte wordt een
+        wekelijkse attendering een dagelijkse, en dat is precies hoe je mensen
+        leert om je berichten weg te klikken.
+        """
+        grens = nu() - timedelta(days=stilte_dagen)
+
+        resultaat = await sessie.execute(
+            select(Shift)
+            .where(
+                Shift.status.in_([str(ShiftStatus.OPEN), str(ShiftStatus.DEELS_GEMATCHT)]),
+                Shift.datum >= date.today(),
+            )
+            .order_by(Shift.datum, Shift.id)
+        )
+        open_shifts = list(resultaat.scalars().all())
+        if not open_shifts:
+            return []
+
+        per_medewerker: dict[int, list[Shift]] = {}
+        for shift in open_shifts:
+            for kandidaat in await self._kandidaten(sessie, shift):
+                if kandidaat.laatste_attendering_op is not None:
+                    if als_aware(kandidaat.laatste_attendering_op) > grens:
+                        continue
+                per_medewerker.setdefault(kandidaat.id, []).append(shift)
+
+        geattendeerd: list[str] = []
+        for medewerker_id, shifts in per_medewerker.items():
+            medewerker = await sessie.get(User, medewerker_id)
+            if medewerker is None or not medewerker.email:
+                continue
+
+            regels = []
+            for shift in shifts[:maximum_per_mail]:
+                bedrijf_naam = await self._bedrijf_naam(sessie, shift.bedrijf_id)
+                regels.append(
+                    f"- {shift.functie.capitalize()} bij {bedrijf_naam}, "
+                    f"{korte_datum(shift.datum)} ({shift.tijd})"
+                )
+
+            medewerker.laatste_attendering_op = nu()
+            await self.publiceer(
+                sessie,
+                ShiftsBeschikbaar(
+                    medewerker_id=medewerker.id,
+                    medewerker_naam=medewerker.naam,
+                    shifts=regels,
+                ),
+            )
+            geattendeerd.append(medewerker.naam)
+
+        return geattendeerd
 
     async def _al_voorgelegd(self, sessie: AsyncSession, match_id: int) -> bool:
         """Ligt deze shift al bij Sebas? Dan niet nog een keer voorleggen."""

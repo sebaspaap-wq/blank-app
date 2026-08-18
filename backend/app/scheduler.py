@@ -5,14 +5,21 @@ deze module draait de organisatie door terwijl niemand kijkt: shifts worden
 gematcht, uren opgevolgd, content gepland, campagnes beoordeeld en facturen
 afgesloten.
 
-Wat hier bewust *niet* gebeurt: er wordt niets verstuurd, betaald of
-gepubliceerd dat een mens nog had moeten zien. De taken hieronder roepen
-uitsluitend agentmethodes aan, en die lopen allemaal via de tier-engine. Een
-taak kan dus nooit meer dan de agent zelf mag:
+De taken die iets *beslissen* roepen uitsluitend agentmethodes aan, en die
+lopen allemaal via de tier-engine. Zo'n taak kan dus nooit meer dan de agent
+zelf mag:
 
   tier 1  gebeurt meteen en komt in het activiteitenlog
   tier 2  krijgt een termijn; de sweep in ``main.py`` voert hem daarna uit
   tier 3  blijft staan tot Sebas kiest
+
+De taken die iets *versturen* (``outbox``, ``publiceren``) beslissen niets: ze
+voeren uit wat er al klaarstaat, langs de driver die in de instellingen is
+gekozen. Standaard is dat ``console``, en dan gaat er niets echt de deur uit.
+Zie app/kanalen/README.md.
+
+Wat er nooit gebeurt: geld. Er is geen taak die een uitbetaling raakt, en er is
+geen module hier die dat zou kunnen — zie app/payouts/README.md.
 
 Elke taak draait in zijn eigen sessie en vangt zijn eigen fouten af. Eén taak
 die omvalt, mag de rest van de organisatie niet stilzetten.
@@ -35,6 +42,7 @@ from app.config import get_settings
 from app.core.domein import nu
 from app.core.events import verwerk_pending
 from app.db.session import sessie
+from app import kanalen
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +94,39 @@ async def volg_afgelopen_shifts_op(s: AsyncSession) -> str | None:
     return ", ".join(delen) or None
 
 
+async def verstuur_outbox(s: AsyncSession) -> str | None:
+    """Verstuur de berichten die de agents hebben klaargezet.
+
+    De agents schrijven alleen naar de outbox; versturen gebeurt hier, in de
+    applicatielaag. Met de standaardinstelling (``console``) gaat er niets echt
+    de deur uit. Zie app/kanalen/README.md.
+    """
+    verslag = await kanalen.verstuur_outbox(s)
+    if not verslag["verstuurd"] and not verslag["mislukt"]:
+        return None
+    tekst = f"{verslag['verstuurd']} bericht(en) verstuurd"
+    if verslag["mislukt"]:
+        tekst += f", {verslag['mislukt']} mislukt"
+    return tekst
+
+
+async def publiceer_content(s: AsyncSession) -> str | None:
+    """Publiceer de posts waarvan de geplande datum is aangebroken."""
+    gepubliceerd = await kanalen.publiceer_geplande_posts(s)
+    return f"{len(gepubliceerd)} post(s) gepubliceerd" if gepubliceerd else None
+
+
+async def attendeer_op_open_shifts(s: AsyncSession) -> str | None:
+    """Wijs medewerkers per mail op shifts waarop ze kunnen reageren.
+
+    Dit is de kant van marketing die niet over adverteren gaat: mensen die er al
+    zijn opnieuw bereiken. Goedkoper dan een nieuwe aanmelding werven, en het
+    vult dezelfde shift.
+    """
+    namen = await MatchingAgent().attendeer_op_open_shifts(s)
+    return f"{len(namen)} medewerker(s) gewezen op openstaande shifts" if namen else None
+
+
 async def plan_content(s: AsyncSession) -> str | None:
     """Houd de content-kalender gevuld (tier 1, binnen de bestaande huisstijl)."""
     gepland = await MarketingAgent().plan_week(s, aantal=3)
@@ -125,11 +166,24 @@ async def sluit_vorige_maand_af(s: AsyncSession) -> str | None:
 #: databasetijd.
 TAKEN: tuple[Taak, ...] = (
     Taak("matching", interval=10 * MINUUT, werk=match_open_shifts, eerste_pauze=MINUUT),
+    Taak("outbox", interval=2 * MINUUT, werk=verstuur_outbox, eerste_pauze=30),
+    Taak(
+        "publiceren",
+        interval=UUR,
+        werk=publiceer_content,
+        eerste_pauze=3 * MINUUT,
+    ),
     Taak(
         "uren-opvolging",
         interval=6 * UUR,
         werk=volg_afgelopen_shifts_op,
         eerste_pauze=2 * MINUUT,
+    ),
+    Taak(
+        "shift-attendering",
+        interval=24 * UUR,
+        werk=attendeer_op_open_shifts,
+        eerste_pauze=4 * MINUUT,
     ),
     Taak("contentplanning", interval=24 * UUR, werk=plan_content, eerste_pauze=5 * MINUUT),
     Taak(

@@ -62,6 +62,25 @@ class Settings(BaseSettings):
         default="./exports", alias="WOSZ_UITBETALING_EXPORT_MAP"
     )
 
+    # --- Uitgaande kanalen --------------------------------------------------
+    # Ook deze velden staan bewust in Settings en niet in AgentSettings: een
+    # agent schrijft naar de outbox en heeft geen adres, wachtwoord of client om
+    # zelf iets te versturen. Zie app/kanalen/README.md.
+    #
+    # 'console' is de standaard en verstuurt niets. Zo kan een verse installatie
+    # nooit per ongeluk berichten naar echte medewerkers sturen.
+    bericht_driver: str = Field(default="console", alias="WOSZ_BERICHT_DRIVER")
+    social_driver: str = Field(default="console", alias="WOSZ_SOCIAL_DRIVER")
+
+    smtp_host: str = Field(default="", alias="WOSZ_SMTP_HOST")
+    smtp_poort: int = Field(default=587, alias="WOSZ_SMTP_POORT")
+    smtp_gebruiker: str = Field(default="", alias="WOSZ_SMTP_GEBRUIKER")
+    smtp_wachtwoord: str = Field(default="", alias="WOSZ_SMTP_WACHTWOORD")
+    smtp_starttls: bool = Field(default=True, alias="WOSZ_SMTP_STARTTLS")
+    smtp_ssl: bool = Field(default=False, alias="WOSZ_SMTP_SSL")
+    afzender_naam: str = Field(default="WOSZ", alias="WOSZ_AFZENDER_NAAM")
+    afzender_email: str = Field(default="", alias="WOSZ_AFZENDER_EMAIL")
+
     @property
     def cors_origin_lijst(self) -> list[str]:
         if self.cors_origins.strip() == "*":

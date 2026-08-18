@@ -42,6 +42,24 @@ from app import payouts as _payouts  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
+
+def _zet_logging_aan() -> None:
+    """Laat het werk van de achtergrondtaken in het venster zien.
+
+    Zonder dit blijft de logger van ``app.*`` op WARNING staan en zie je in de
+    terminal alleen webverkeer. Dan lijkt het alsof er niets gebeurt — terwijl
+    de agents doorwerken — en de console-driver, die berichten juist naar het
+    log schrijft in plaats van te versturen, zou helemaal onzichtbaar zijn.
+    """
+    app_logger = logging.getLogger("app")
+    if app_logger.handlers:
+        return
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s  %(message)s", "%H:%M:%S"))
+    app_logger.addHandler(handler)
+    app_logger.setLevel(logging.INFO)
+    app_logger.propagate = False
+
 #: Hoe vaak de tier 2-sweep draait (seconden). Deadlines zijn in uren, dus
 #: elke vijf minuten kijken is ruim voldoende.
 SWEEP_INTERVAL = 300
@@ -84,6 +102,7 @@ async def _tier2_worker() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    _zet_logging_aan()
     await maak_tabellen()
     # De twee workers hieronder houden de bestaande afspraken lopend (events en
     # verlopen tier 2-termijnen); scheduler.start() zet de organisatie zelf aan

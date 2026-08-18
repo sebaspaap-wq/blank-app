@@ -48,9 +48,12 @@ dashboard onder *Activiteitenlog*:
 
 | Wanneer | Wat er gebeurt |
 |---|---|
+| Elke 2 minuten | Klaarstaande berichten worden verstuurd |
 | Elke 10 minuten | Openstaande shifts worden gematcht |
+| Elk uur | Content waarvan de datum is aangebroken, wordt gepubliceerd |
 | Elke 6 uur | Shifts die voorbij zijn maar waarvan de uren ontbreken, worden opgevolgd |
-| Elke dag | Content voor de komende week wordt ingepland |
+| Elke dag | Medewerkers krijgen een mail met shifts die bij ze passen |
+| Elke dag | Content voor de komende week wordt ingepland en geschreven |
 | Elke dag | Campagneresultaten worden vergeleken met de verwachting |
 | Op de 1e van de maand | De facturen van de vorige maand worden afgerond |
 
@@ -58,10 +61,16 @@ Daarnaast gebeurt er meteen iets zodra iemand iets doet: een aanvraag van een
 bedrijf wordt direct gematcht, een nieuwe medewerker krijgt direct zijn
 welkomstbericht, en wie een shift afzegt maakt de plek meteen weer vrij.
 
-Wat er nooit vanzelf gebeurt: geld uitbetalen, iemand als niet-verschenen
-registreren, een nieuwe campagne-richting kiezen, of een antwoord versturen dat
-Sebas niet heeft goedgekeurd. Dat zijn de beslissingen die in het dashboard
-blijven staan tot jij kiest.
+**Er gaat pas echt iets de deur uit als jij een kanaal aanzet.** Standaard
+schrijft het systeem elk bericht en elke post naar het serverlog in plaats van
+naar een echte medewerker of een echt Instagram-account. Alles draait dus
+compleet, maar niemand ontvangt iets. Wil je het aanzetten, dan staat in
+[`backend/app/kanalen/README.md`](backend/app/kanalen/README.md) hoe.
+
+Wat er nooit vanzelf gebeurt: geld uitbetalen, advertentiebudget aanpassen,
+iemand als niet-verschenen registreren, een nieuwe campagne-richting kiezen, of
+een antwoord versturen dat jij niet hebt goedgekeurd. Dat zijn de beslissingen
+die in het dashboard blijven staan tot jij kiest.
 
 ## Twee dingen om te weten voordat je verder bouwt
 

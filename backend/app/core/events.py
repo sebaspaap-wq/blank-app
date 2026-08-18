@@ -90,6 +90,23 @@ class UrenOntbreken(Envelope):
     datum: str
 
 
+class ShiftsBeschikbaar(Envelope):
+    """Matching vraagt Support een medewerker op openstaande shifts te wijzen.
+
+    ``shifts`` bevat alleen feiten uit de shiftrecords: functie, datum en
+    locatie. Bewust geen uurlonen — een mail namens WOSZ die bedragen noemt,
+    leest als een toezegging. Wie het uurloon wil zien, opent de app.
+    """
+
+    EVENT_TYPE: ClassVar[str] = "shifts.beschikbaar"
+    BRON: ClassVar[Afdeling] = Afdeling.MATCHING
+    DOEL: ClassVar[Afdeling] = Afdeling.SUPPORT
+
+    medewerker_id: int
+    medewerker_naam: str
+    shifts: list[str]
+
+
 class WervingstekortGemeld(Envelope):
     """Matching meldt aan Marketing dat er te weinig kandidaten zijn."""
 
@@ -123,6 +140,7 @@ EVENT_TYPES: dict[str, type[Envelope]] = {
         UrenGewerkt,
         NoShowGesignaleerd,
         UrenOntbreken,
+        ShiftsBeschikbaar,
         WervingstekortGemeld,
         LevelBereikt,
     )

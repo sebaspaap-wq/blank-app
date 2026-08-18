@@ -234,6 +234,25 @@ UREN_HERINNERING = registreer(
     )
 )
 
+SHIFTS_BESCHIKBAAR = registreer(
+    Sjabloon(
+        naam="shifts_beschikbaar",
+        kanaal=Kanaal.EMAIL,
+        onderwerp="Nieuwe shifts die bij je passen",
+        body=(
+            "Hoi {medewerker_naam},\n\n"
+            "Er staan shifts open die passen bij je functies en je "
+            "beschikbaarheid:\n\n"
+            "{overzicht}\n\n"
+            "Reageren doe je in de app. Wie het eerst reageert staat vooraan in "
+            "de rij; binnen die groep gaat wie dit seizoen de meeste uren heeft "
+            "gemaakt voor.\n\n"
+            "Past er niets bij? Dan hoef je niets te doen.\n\n"
+            "Groet,\nWOSZ"
+        ),
+    )
+)
+
 KENNISBANK_ANTWOORD = registreer(
     Sjabloon(
         naam="kennisbank_antwoord",

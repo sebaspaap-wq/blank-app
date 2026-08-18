@@ -47,7 +47,12 @@ from app.core.domein import (
     VraagUitkomst,
     nu,
 )
-from app.core.events import NoShowGesignaleerd, UrenOntbreken, handelt
+from app.core.events import (
+    NoShowGesignaleerd,
+    ShiftsBeschikbaar,
+    UrenOntbreken,
+    handelt,
+)
 from app.core.tiers import Optie, Voorstel, registreer_uitvoerder
 from app.db.models import AgentEvent, Bericht, Beslissing, Kennisbankitem, Supportvraag, User
 
@@ -488,6 +493,41 @@ class SupportAgent(BaseAgent):
         )
 
 
+    async def wijs_op_shifts(
+        self, sessie: AsyncSession, event: ShiftsBeschikbaar, bron: AgentEvent | None = None
+    ) -> None:
+        """Mail een medewerker de shifts waarop hij kan reageren (tier 1).
+
+        ``overzicht`` is een opsomming die de Matching-agent heeft samengesteld
+        uit de shiftrecords: functie, bedrijf, datum en tijd. Het is dus geen
+        tekst die een model heeft bedacht, maar de gegevens die ook in de app
+        staan — regel voor regel uit de database.
+        """
+        tekst = (
+            f"{event.medewerker_naam} gewezen op {len(event.shifts)} openstaande shift(s)"
+        )
+        await self.voer_uit(
+            sessie,
+            Voorstel(
+                afdeling=self.afdeling,
+                tier=Tier.ZELFSTANDIG,
+                logtekst=tekst,
+                actie={
+                    "uitvoerder": "support.verstuur_bericht",
+                    "params": {
+                        "sjabloon": "shifts_beschikbaar",
+                        "ontvanger_user_id": event.medewerker_id,
+                        "variabelen": {
+                            "medewerker_naam": event.medewerker_naam,
+                            "overzicht": "\n".join(event.shifts),
+                        },
+                        "logtekst": tekst,
+                    },
+                },
+            ),
+        )
+
+
 def _is_klacht(vraag: str) -> bool:
     return any(re.search(p, vraag, flags=re.IGNORECASE) for p in _KLACHT_PATRONEN)
 
@@ -552,6 +592,13 @@ async def _op_ontbrekende_uren(
     sessie: AsyncSession, event: UrenOntbreken, bron: AgentEvent
 ) -> None:
     await SupportAgent().herinner_aan_uren(sessie, event, bron)
+
+
+@handelt(ShiftsBeschikbaar)
+async def _op_beschikbare_shifts(
+    sessie: AsyncSession, event: ShiftsBeschikbaar, bron: AgentEvent
+) -> None:
+    await SupportAgent().wijs_op_shifts(sessie, event, bron)
 
 
 # ---------------------------------------------------------------------------

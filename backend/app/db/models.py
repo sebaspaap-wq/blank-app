@@ -76,6 +76,12 @@ class User(Base):
     # Uitbreiding: welk bedrijf hoort bij een horeca-account.
     bedrijf_id: Mapped[int | None] = mapped_column(ForeignKey("bedrijven.id"))
 
+    # Uitbreiding: wanneer deze medewerker voor het laatst is gewezen op nieuwe
+    # shifts. Voorkomt dat de wekelijkse mailing een dagelijkse wordt.
+    laatste_attendering_op: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+
     aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
 
     level: Mapped["Level | None"] = relationship(
