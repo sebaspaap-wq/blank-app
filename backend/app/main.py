@@ -26,6 +26,7 @@ from app.api import marketing as marketing_api
 from app.api import matching as matching_api
 from app.api import medewerker as medewerker_api
 from app.api import support as support_api
+from app import scheduler
 from app.config import get_settings
 from app.core.events import verwerk_pending
 from app.core.tiers import sweep_verlopen_tier2
@@ -84,9 +85,13 @@ async def _tier2_worker() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     await maak_tabellen()
+    # De twee workers hieronder houden de bestaande afspraken lopend (events en
+    # verlopen tier 2-termijnen); scheduler.start() zet de organisatie zelf aan
+    # het werk. Zonder dat laatste gebeurt er alleen iets als iemand klikt.
     taken = [
         asyncio.create_task(_event_worker(), name="wosz-event-worker"),
         asyncio.create_task(_tier2_worker(), name="wosz-tier2-sweep"),
+        *scheduler.start(),
     ]
     try:
         yield

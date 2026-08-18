@@ -218,6 +218,22 @@ SHIFT_BEVESTIGD = registreer(
     )
 )
 
+UREN_HERINNERING = registreer(
+    Sjabloon(
+        naam="uren_herinnering",
+        kanaal=Kanaal.WHATSAPP,
+        onderwerp="Hoeveel uur heb je gewerkt bij {bedrijf_naam}?",
+        body=(
+            "Hoi {medewerker_naam},\n\n"
+            "Je shift bij {bedrijf_naam} op {datum} staat nog open in het "
+            "systeem. Geef even in de app door hoeveel uur je hebt gewerkt, dan "
+            "is het administratief rond.\n\n"
+            "Klopt er iets niet aan deze shift? Stuur dan een bericht terug.\n\n"
+            "Groet,\nWOSZ"
+        ),
+    )
+)
+
 KENNISBANK_ANTWOORD = registreer(
     Sjabloon(
         naam="kennisbank_antwoord",

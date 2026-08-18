@@ -866,6 +866,12 @@
         <div class="topbar"><div><h1>Activiteitenlog</h1><div class="sub">Alles wat AI zelfstandig heeft afgehandeld, op volgorde van tijd.</div></div></div>
         <div class="content">
           <div class="card">
+            <div class="card-head"><h3>Wat er vanzelf draait</h3></div>
+            <div style="font-family:var(--mono); font-size:12.5px; color:rgba(18,36,42,0.55); margin-bottom:14px;">Deze rondes lopen door zonder dat er iemand hoeft te klikken.</div>
+            <div id="d-planning"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Alle activiteit</h3></div>
             <div id="d-log-list"></div>
           </div>
         </div>
@@ -1228,11 +1234,39 @@
       </div>`).join('') : `<div class="empty">Nog geen aankomende shifts. Bekijk de beschikbare shifts!</div>`;
 
     const h = document.getElementById('m-mijn-geschiedenis');
-    h.innerHTML = mijnGeschiedenis.length ? mijnGeschiedenis.map(s => `
-      <div class="list-row">
+    h.innerHTML = mijnGeschiedenis.length ? mijnGeschiedenis.map(geschiedenisRij).join('')
+      : `<div class="empty">Nog geen shiftgeschiedenis.</div>`;
+  }
+
+  /* Een shift die voorbij is maar waarvan de uren nog niet zijn doorgegeven,
+     krijgt hier een knop. Dat is precies waar de herinnering van WOSZ naar
+     verwijst — zonder die knop zou het bericht nergens heen wijzen. */
+  function geschiedenisRij(s){
+    const rechts = s.uren
+      ? `<span class="badge done">${s.uren}u afgerond</span>`
+      : (s.status === 'Niet verschenen'
+          ? `<span class="badge">${s.status}</span>`
+          : `<button class="btn btn-coral btn-sm" onclick="geefUrenDoor(${s.matchId})">Uren doorgeven</button>`);
+    return `<div class="list-row">
         <div class="info"><b>${s.role} · ${s.plek}</b><span>${s.datum} · ${s.tijd}</span></div>
-        <span class="badge done">${s.uren}u afgerond</span>
-      </div>`).join('') : `<div class="empty">Nog geen shiftgeschiedenis.</div>`;
+        ${rechts}
+      </div>`;
+  }
+
+  async function geefUrenDoor(matchId){
+    const s = mijnGeschiedenis.find(x => x.matchId === matchId);
+    if(!s) return;
+    const ingevuld = prompt(`Hoeveel uur heb je gewerkt bij ${s.plek} op ${s.datum}?`, '6');
+    if(ingevuld === null) return;
+    const uren = parseFloat(ingevuld.replace(',', '.'));
+    if(!(uren > 0 && uren <= 24)){ toast('Vul een aantal uren in tussen 0 en 24'); return; }
+    try {
+      await apiPost(`/api/medewerker/${MEDEWERKER_ID}/matches/${matchId}/uren`, { uren });
+      neemMedewerkerData(await apiGet(`/api/medewerker/${MEDEWERKER_ID}`));
+      toast(`${uren} uur doorgegeven — telt mee voor je level`);
+    } catch(err){
+      toast(err.uitleg || 'Uren doorgeven lukte niet');
+    }
   }
 
   async function annuleerShift(matchId){
@@ -1530,6 +1564,7 @@
   let decisions = [];
   let decisionsResolved = [];
   let activityLog = [];
+  let geplandeRondes = [];
   let dashboardStats = { actiesVandaag:0, nieuweMatches:0, aanmeldingenVandaag:0, openBeslissingen:0 };
 
   const COLLAB_MAP = {
@@ -1548,17 +1583,19 @@
      het al had — beter dan een lege pagina. */
   async function laadDirectieData(){
     try {
-      const [stats, log, besluiten, rapport] = await Promise.all([
+      const [stats, log, besluiten, rapport, planning] = await Promise.all([
         apiGet('/api/directie/dashboard'),
         apiGet('/api/directie/activiteiten'),
         apiGet('/api/directie/beslissingen'),
         apiGet('/api/directie/dagrapport'),
+        apiGet('/api/directie/planning'),
       ]);
       dashboardStats = stats;
       activityLog = log;
       decisions = besluiten.open;
       decisionsResolved = besluiten.afgehandeld;
       dailyReport = rapport;
+      geplandeRondes = planning;
       toonVerbindingsfout(false);
       return true;
     } catch (err) {
@@ -1593,6 +1630,7 @@
     renderRapport();
     renderBeslissingen();
     renderLog();
+    renderPlanning();
     renderCollabChips();
     renderDeptFeeds();
   }
@@ -1601,6 +1639,24 @@
     const gelukt = await laadDirectieData();
     tekenDirectie();
     if(!gelukt) toonVerbindingsfout(true);
+  }
+
+  const TAAK_LABEL = {
+    'matching': 'Openstaande shifts matchen',
+    'uren-opvolging': 'Ontbrekende uren opvolgen',
+    'contentplanning': 'Content inplannen',
+    'campagnebeoordeling': 'Campagneresultaten beoordelen',
+    'facturen': 'Facturen afsluiten',
+  };
+
+  function renderPlanning(){
+    const el = document.getElementById('d-planning');
+    if(!el) return;
+    el.innerHTML = geplandeRondes.length ? geplandeRondes.map(t => `
+      <div class="list-row">
+        <div class="info"><b>${TAAK_LABEL[t.naam] || t.naam}</b><span>${t.elke}</span></div>
+        <span class="badge">actief</span>
+      </div>`).join('') : `<div class="empty">De achtergrondtaken zijn niet gestart.</div>`;
   }
 
   function renderCollabChips(){

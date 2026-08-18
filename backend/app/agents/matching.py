@@ -25,14 +25,22 @@ from app.agents.base import BaseAgent
 from app.agents.llm import vraag_gestructureerd_besluit
 from app.core.domein import (
     Afdeling,
+    BeslissingStatus,
     MatchStatus,
     ReactieStatus,
     ShiftStatus,
     Tier,
     Urgentie,
     level_voor_uren,
+    nu,
 )
-from app.core.events import LevelBereikt, NoShowGesignaleerd, UrenGewerkt, WervingstekortGemeld
+from app.core.events import (
+    LevelBereikt,
+    NoShowGesignaleerd,
+    UrenGewerkt,
+    UrenOntbreken,
+    WervingstekortGemeld,
+)
 from app.core.tiers import Optie, Voorstel, registreer_uitvoerder
 from app.db.models import Beslissing, Level, Match, Reactie, Shift, User
 
@@ -41,6 +49,14 @@ DAGEN = ("ma", "di", "wo", "do", "vr", "za", "zo")
 
 #: Vanaf dit aantal no-shows stelt de agent schorsing voor (tier 2).
 NO_SHOW_DREMPEL = 3
+
+#: Zoveel dagen na een shift stuurt Support een herinnering om de uren door te
+#: geven. Eén dag, zodat een avondshift die na middernacht eindigt niet meteen
+#: de volgende ochtend al een bericht oplevert.
+HERINNER_NA_DAGEN = 1
+
+#: En zoveel dagen erna gaat de vraag met een termijn naar Sebas (tier 2).
+ESCALEER_NA_DAGEN = 4
 
 SYSTEEMPROMPT = """Je bent de Matching-agent van WOSZ, een horecapersoneelsplatform in Zandvoort.
 
@@ -470,6 +486,149 @@ class MatchingAgent(BaseAgent):
 
     # -- urengeschil (tier 3) ---------------------------------------------
 
+    # -- afgelopen shifts opvolgen -----------------------------------------
+
+    async def volg_afgelopen_shifts_op(
+        self,
+        sessie: AsyncSession,
+        *,
+        herinner_na_dagen: int = HERINNER_NA_DAGEN,
+        escaleer_na_dagen: int = ESCALEER_NA_DAGEN,
+    ) -> dict[str, list[str]]:
+        """Handel shifts af die voorbij zijn maar waarvan de uren ontbreken.
+
+        Zonder deze stap blijft een shift eeuwig op 'bevestigd' staan: er wordt
+        niet gefactureerd, het level gaat niet omhoog en niemand merkt het.
+
+        De agent boekt hier bewust zelf geen uren en markeert niemand als
+        no-show. Beide zijn beweringen over wat er in de echte wereld is
+        gebeurd, en daar heeft het systeem geen zicht op. Wat hij wel doet:
+        eerst één keer herinneren (tier 1), en als dat niets oplevert de vraag
+        met een termijn aan Sebas voorleggen (tier 2).
+        """
+        vandaag = date.today()
+        resultaat = await sessie.execute(
+            select(Match, Shift)
+            .join(Shift, Shift.id == Match.shift_id)
+            .where(
+                Match.status == str(MatchStatus.BEVESTIGD),
+                Shift.datum < vandaag,
+            )
+            .order_by(Shift.datum)
+        )
+
+        herinnerd: list[str] = []
+        geescaleerd: list[str] = []
+
+        for match, shift in resultaat.all():
+            dagen = (vandaag - shift.datum).days
+            medewerker = await sessie.get(User, match.medewerker_id)
+            if medewerker is None:
+                continue
+            bedrijf_naam = await self._bedrijf_naam(sessie, shift.bedrijf_id)
+
+            if dagen >= escaleer_na_dagen:
+                if await self._al_voorgelegd(sessie, match.id):
+                    continue
+                await self._leg_ontbrekende_uren_voor(
+                    sessie, match, shift, medewerker, bedrijf_naam, dagen
+                )
+                geescaleerd.append(medewerker.naam)
+            elif dagen >= herinner_na_dagen:
+                # Eén herinnering per shift. Zonder deze stempel stuurt de
+                # scheduler elke ronde opnieuw hetzelfde bericht.
+                if match.uren_herinnering_op is not None:
+                    continue
+                match.uren_herinnering_op = nu()
+                await self.publiceer(
+                    sessie,
+                    UrenOntbreken(
+                        match_id=match.id,
+                        medewerker_id=medewerker.id,
+                        medewerker_naam=medewerker.naam,
+                        bedrijf_naam=bedrijf_naam,
+                        datum=shift.datum.isoformat(),
+                    ),
+                )
+                herinnerd.append(medewerker.naam)
+
+        return {"herinnerd": herinnerd, "geescaleerd": geescaleerd}
+
+    async def _al_voorgelegd(self, sessie: AsyncSession, match_id: int) -> bool:
+        """Ligt deze shift al bij Sebas? Dan niet nog een keer voorleggen."""
+        resultaat = await sessie.execute(
+            select(Beslissing).where(
+                Beslissing.afdeling_bron == str(self.afdeling),
+                Beslissing.status == str(BeslissingStatus.OPEN),
+            )
+        )
+        for beslissing in resultaat.scalars().all():
+            for optie in beslissing.opties or []:
+                params = (optie.get("actie") or {}).get("params") or {}
+                if params.get("match_id") == match_id:
+                    return True
+        return False
+
+    async def _leg_ontbrekende_uren_voor(
+        self,
+        sessie: AsyncSession,
+        match: Match,
+        shift: Shift,
+        medewerker: User,
+        bedrijf_naam: str,
+        dagen: int,
+    ) -> None:
+        """Tier 2: boek de geplande uren, tenzij Sebas iets anders kiest.
+
+        De standaardafloop is bewust de voorzichtige: de geplande uren boeken.
+        Dat is wat er volgens de afspraak zou zijn gewerkt. Iemand als
+        'niet verschenen' registreren is een aantijging met gevolgen voor zijn
+        level en toekomstige shifts; dat gebeurt alleen als een mens het kiest.
+        """
+        await self.voer_uit(
+            sessie,
+            Voorstel(
+                afdeling=self.afdeling,
+                tier=Tier.TENZIJ,
+                urgentie=Urgentie.DEZE_WEEK,
+                titel=f"Uren ontbreken: {medewerker.naam} bij {bedrijf_naam}",
+                situatie=(
+                    f"De shift van {medewerker.naam} bij {bedrijf_naam} op "
+                    f"{shift.datum.isoformat()} is {dagen} dagen geleden geweest, "
+                    f"maar er zijn nog geen uren doorgegeven. Volgens de planning "
+                    f"ging het om {shift.duur_uren:.0f} uur. Zonder ingrijpen "
+                    f"worden die uren geboekt en gefactureerd."
+                ),
+                aanbeveling=(
+                    "AI-advies: geplande uren boeken — dat is wat er is afgesproken. "
+                    "Twijfel je, bel dan even met het bedrijf voordat de termijn "
+                    "verstrijkt."
+                ),
+                opties=[
+                    Optie(
+                        naam=f"{shift.duur_uren:.0f} uur boeken",
+                        gevolg="Uren gaan naar Financieel en op de factuur",
+                        actie={
+                            "uitvoerder": "matching.corrigeer_uren",
+                            "params": {"match_id": match.id, "uren": shift.duur_uren},
+                        },
+                    ),
+                    Optie(
+                        naam="Niet verschenen",
+                        gevolg="Telt als no-show; er worden geen uren geboekt",
+                        actie={
+                            "uitvoerder": "matching.markeer_no_show",
+                            "params": {"match_id": match.id},
+                        },
+                    ),
+                ],
+                logtekst=(
+                    f"Uren ontbreken voor {medewerker.naam} bij {bedrijf_naam} "
+                    f"({shift.datum.isoformat()}) — voorgelegd aan Sebas"
+                ),
+            ),
+        )
+
     async def meld_urengeschil(
         self,
         sessie: AsyncSession,
@@ -738,6 +897,27 @@ async def _schors_medewerker(
         raise LookupError(f"Medewerker {params['medewerker_id']} bestaat niet")
     medewerker.geschorst = True
     return f"{medewerker.naam} geschorst voor nieuwe shifts na herhaalde no-shows"
+
+
+@registreer_uitvoerder("matching.markeer_no_show")
+async def _markeer_no_show(
+    sessie: AsyncSession, params: dict[str, Any], _beslissing: Beslissing | None
+) -> str:
+    """Registreer alsnog een no-show, na een expliciete keuze van Sebas.
+
+    Dit is de tegenhanger van ``matching.corrigeer_uren``: er worden geen uren
+    geboekt en de shift telt niet mee voor het level. Bewust geen tier 1-actie —
+    een no-show is een aantijging met gevolgen, dus hij komt alleen langs deze
+    weg tot stand.
+    """
+    match = await sessie.get(Match, params["match_id"])
+    if match is None:
+        raise LookupError(f"Match {params['match_id']} bestaat niet")
+
+    match.status = str(MatchStatus.NO_SHOW)
+    medewerker = await sessie.get(User, match.medewerker_id)
+    naam = medewerker.naam if medewerker else f"medewerker {match.medewerker_id}"
+    return f"Shift van {naam} geregistreerd als niet verschenen; er worden geen uren geboekt"
 
 
 @registreer_uitvoerder("matching.corrigeer_uren")

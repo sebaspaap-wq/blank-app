@@ -1,9 +1,14 @@
-"""Weergavehelpers voor de app-schermen.
+"""Weergavehelpers voor de app-schermen en de berichten.
 
 De medewerker- en horecaschermen tonen datums als "Za 16 aug" en uurlonen als
 "€13,00 – €14,50". Dat zijn presentatievormen, geen opslagvormen: in de database
 staat een echte datum en een tekstveld. Deze module doet de vertaling, op één
 plek, zodat alle endpoints hetzelfde tonen.
+
+Hij hoort in ``app/core`` en niet in ``app/api``, omdat ook de Support-agent
+deze notatie gebruikt: een herinneringsbericht noemt dezelfde datum als de
+shiftkaart in de app. Een agent die van de API-laag afhangt zou de afhankelijk-
+heden de verkeerde kant op laten wijzen.
 """
 
 from __future__ import annotations

@@ -72,6 +72,24 @@ class NoShowGesignaleerd(Envelope):
     aantal_no_shows: int
 
 
+class UrenOntbreken(Envelope):
+    """Matching meldt aan Support dat de uren van een afgelopen shift ontbreken.
+
+    Support stuurt daarop een herinnering. Er wordt niets geboekt en niemand
+    wordt beschuldigd: dit is alleen de vraag om de uren door te geven.
+    """
+
+    EVENT_TYPE: ClassVar[str] = "uren.ontbreken"
+    BRON: ClassVar[Afdeling] = Afdeling.MATCHING
+    DOEL: ClassVar[Afdeling] = Afdeling.SUPPORT
+
+    match_id: int
+    medewerker_id: int
+    medewerker_naam: str
+    bedrijf_naam: str
+    datum: str
+
+
 class WervingstekortGemeld(Envelope):
     """Matching meldt aan Marketing dat er te weinig kandidaten zijn."""
 
@@ -101,7 +119,13 @@ class LevelBereikt(Envelope):
 
 EVENT_TYPES: dict[str, type[Envelope]] = {
     cls.EVENT_TYPE: cls
-    for cls in (UrenGewerkt, NoShowGesignaleerd, WervingstekortGemeld, LevelBereikt)
+    for cls in (
+        UrenGewerkt,
+        NoShowGesignaleerd,
+        UrenOntbreken,
+        WervingstekortGemeld,
+        LevelBereikt,
+    )
 }
 
 

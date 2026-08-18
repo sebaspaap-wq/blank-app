@@ -110,6 +110,19 @@ async def lees_dashboard(sessie: AsyncSession = Depends(get_sessie)) -> Dashboar
     )
 
 
+@router.get("/planning")
+async def lees_planning() -> list[dict[str, str]]:
+    """Welke rondes er vanzelf draaien, en hoe vaak.
+
+    Geen database-aanroep: dit is de dienstregeling uit ``app/scheduler.py``.
+    Hij staat in het dashboard zodat zichtbaar is wat er buiten beeld gebeurt —
+    automatisering die je niet kunt zien, kun je ook niet vertrouwen.
+    """
+    from app.scheduler import volgende_rondes
+
+    return volgende_rondes()
+
+
 # ---------------------------------------------------------------------------
 # Uitbetalingen — administratie, geen betalingen
 # ---------------------------------------------------------------------------

@@ -4,7 +4,9 @@ Systeem van vier gescheiden AI-agents (Marketing, Matching, Support, Financieel)
 die de dagelijkse operatie van WOSZ uitvoeren, gecoordineerd door een
 Directie-agent die rapporteert aan Sebas.
 
-**Status:** alle vier de agents draaien — Matching, Support, Financieel en Marketing.
+**Status:** alle vier de agents draaien — Matching, Support, Financieel en
+Marketing. Alle drie de schermen in de app (medewerker, horeca, directie) staan
+op echte data, en de organisatie draait door zonder dat er iemand klikt.
 
 ```
 backend/    FastAPI-backend met de agents, de escalatiemotor en de event-bus
@@ -38,6 +40,28 @@ op vaste regels in plaats van met Claude; verder werkt alles hetzelfde.
 
 Werkt het niet, of wil je liever zelf de commando's typen? Dan staat de
 uitgebreide uitleg in [`backend/README.md`](backend/README.md).
+
+## Wat er vanzelf gebeurt
+
+Zolang het zwarte venster openstaat, werkt het systeem door. Je ziet het in het
+dashboard onder *Activiteitenlog*:
+
+| Wanneer | Wat er gebeurt |
+|---|---|
+| Elke 10 minuten | Openstaande shifts worden gematcht |
+| Elke 6 uur | Shifts die voorbij zijn maar waarvan de uren ontbreken, worden opgevolgd |
+| Elke dag | Content voor de komende week wordt ingepland |
+| Elke dag | Campagneresultaten worden vergeleken met de verwachting |
+| Op de 1e van de maand | De facturen van de vorige maand worden afgerond |
+
+Daarnaast gebeurt er meteen iets zodra iemand iets doet: een aanvraag van een
+bedrijf wordt direct gematcht, een nieuwe medewerker krijgt direct zijn
+welkomstbericht, en wie een shift afzegt maakt de plek meteen weer vrij.
+
+Wat er nooit vanzelf gebeurt: geld uitbetalen, iemand als niet-verschenen
+registreren, een nieuwe campagne-richting kiezen, of een antwoord versturen dat
+Sebas niet heeft goedgekeurd. Dat zijn de beslissingen die in het dashboard
+blijven staan tot jij kiest.
 
 ## Twee dingen om te weten voordat je verder bouwt
 

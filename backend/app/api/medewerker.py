@@ -40,7 +40,7 @@ from app.api.schemas import (
     VriendIn,
     VriendUit,
 )
-from app.api.weergave import korte_datum, uurloon_tekst
+from app.core.weergave import korte_datum, uurloon_tekst
 from app.config import get_settings
 from app.core.domein import MatchStatus, ReactieStatus, ShiftStatus
 from app.core.events import verwerk_pending

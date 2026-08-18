@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from datetime import date
 from typing import Any
 
 from sqlalchemy import select
@@ -36,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.base import BaseAgent
 from app.agents.llm import vraag_gestructureerd_besluit
 from app.agents.sjablonen import haal_sjabloon
+from app.core.weergave import korte_datum
 from app.core.domein import (
     Afdeling,
     BerichtStatus,
@@ -45,7 +47,7 @@ from app.core.domein import (
     VraagUitkomst,
     nu,
 )
-from app.core.events import NoShowGesignaleerd, handelt
+from app.core.events import NoShowGesignaleerd, UrenOntbreken, handelt
 from app.core.tiers import Optie, Voorstel, registreer_uitvoerder
 from app.db.models import AgentEvent, Bericht, Beslissing, Kennisbankitem, Supportvraag, User
 
@@ -451,6 +453,41 @@ class SupportAgent(BaseAgent):
         )
 
 
+    async def herinner_aan_uren(
+        self, sessie: AsyncSession, event: UrenOntbreken, bron: AgentEvent | None = None
+    ) -> None:
+        """Vraag de medewerker zijn uren door te geven (tier 1).
+
+        Alleen een herinnering. Er wordt niets geboekt en niets verweten — dat
+        gebeurt pas als Sebas er in het dashboard een keuze over maakt.
+        """
+        tekst = (
+            f"Herinnering verstuurd naar {event.medewerker_naam}: uren van de shift "
+            f"bij {event.bedrijf_naam} ontbreken nog"
+        )
+        await self.voer_uit(
+            sessie,
+            Voorstel(
+                afdeling=self.afdeling,
+                tier=Tier.ZELFSTANDIG,
+                logtekst=tekst,
+                actie={
+                    "uitvoerder": "support.verstuur_bericht",
+                    "params": {
+                        "sjabloon": "uren_herinnering",
+                        "ontvanger_user_id": event.medewerker_id,
+                        "variabelen": {
+                            "medewerker_naam": event.medewerker_naam,
+                            "bedrijf_naam": event.bedrijf_naam,
+                            "datum": korte_datum(date.fromisoformat(event.datum)),
+                        },
+                        "logtekst": tekst,
+                    },
+                },
+            ),
+        )
+
+
 def _is_klacht(vraag: str) -> bool:
     return any(re.search(p, vraag, flags=re.IGNORECASE) for p in _KLACHT_PATRONEN)
 
@@ -508,6 +545,13 @@ async def _op_no_show(
     sessie: AsyncSession, event: NoShowGesignaleerd, bron: AgentEvent
 ) -> None:
     await SupportAgent().waarschuw_na_no_show(sessie, event, bron)
+
+
+@handelt(UrenOntbreken)
+async def _op_ontbrekende_uren(
+    sessie: AsyncSession, event: UrenOntbreken, bron: AgentEvent
+) -> None:
+    await SupportAgent().herinner_aan_uren(sessie, event, bron)
 
 
 # ---------------------------------------------------------------------------

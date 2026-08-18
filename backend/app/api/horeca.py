@@ -33,7 +33,7 @@ from app.api.schemas import (
     HorecaUit,
     KandidaatUit,
 )
-from app.api.weergave import (
+from app.core.weergave import (
     DatumFout,
     kandidaat_info,
     korte_datum,

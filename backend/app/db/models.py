@@ -142,6 +142,11 @@ class Match(Base):
     door_llm: Mapped[bool] = mapped_column(Boolean, default=False)
     aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
 
+    # Uitbreiding: wanneer er is herinnerd aan het doorgeven van de uren. Staat
+    # hier en niet in de eventtabel, zodat de scheduler met één blik ziet of er
+    # al iets is gestuurd — ook nadat oude events zijn opgeruimd.
+    uren_herinnering_op: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     shift: Mapped[Shift] = relationship(back_populates="matches")
     medewerker: Mapped[User] = relationship()
 
