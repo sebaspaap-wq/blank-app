@@ -90,6 +90,15 @@ class MatchStatus(StrEnum):
     GEANNULEERD = "geannuleerd"
 
 
+class ReactieStatus(StrEnum):
+    """Wat er met een zelf geplaatste reactie op een shift is gebeurd."""
+
+    OPEN = "open"
+    GEHONOREERD = "gehonoreerd"
+    VERVALLEN = "vervallen"
+    INGETROKKEN = "ingetrokken"
+
+
 class EventStatus(StrEnum):
     PENDING = "pending"
     VERWERKT = "verwerkt"

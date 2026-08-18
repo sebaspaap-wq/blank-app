@@ -21,8 +21,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import directie as directie_api
 from app.api import financieel as financieel_api
+from app.api import horeca as horeca_api
 from app.api import marketing as marketing_api
 from app.api import matching as matching_api
+from app.api import medewerker as medewerker_api
 from app.api import support as support_api
 from app.config import get_settings
 from app.core.events import verwerk_pending
@@ -120,6 +122,8 @@ def maak_app() -> FastAPI:
     app.include_router(support_api.router)
     app.include_router(financieel_api.router)
     app.include_router(marketing_api.router)
+    app.include_router(medewerker_api.router)
+    app.include_router(horeca_api.router)
 
     @app.get("/health", tags=["systeem"])
     async def health() -> dict[str, str]:

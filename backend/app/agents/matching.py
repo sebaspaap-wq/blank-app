@@ -26,6 +26,7 @@ from app.agents.llm import vraag_gestructureerd_besluit
 from app.core.domein import (
     Afdeling,
     MatchStatus,
+    ReactieStatus,
     ShiftStatus,
     Tier,
     Urgentie,
@@ -33,7 +34,7 @@ from app.core.domein import (
 )
 from app.core.events import LevelBereikt, NoShowGesignaleerd, UrenGewerkt, WervingstekortGemeld
 from app.core.tiers import Optie, Voorstel, registreer_uitvoerder
-from app.db.models import Beslissing, Level, Match, Shift, User
+from app.db.models import Beslissing, Level, Match, Reactie, Shift, User
 
 #: Weekdagafkortingen zoals ze in ``User.beschikbare_dagen`` staan.
 DAGEN = ("ma", "di", "wo", "do", "vr", "za", "zo")
@@ -118,26 +119,13 @@ class MatchingAgent(BaseAgent):
             keuze, onderbouwing, door_llm = await self._kies_kandidaat(
                 sessie, shift, kandidaten, bedrijf_naam
             )
-
-            await self.voer_uit(
+            await self.plan_kandidaat_in(
                 sessie,
-                Voorstel(
-                    afdeling=self.afdeling,
-                    tier=Tier.ZELFSTANDIG,
-                    logtekst=(
-                        f"Shift {shift.functie} bij {bedrijf_naam} gematcht met {keuze.naam}"
-                    ),
-                    actie={
-                        "uitvoerder": "matching.bevestig_match",
-                        "params": {
-                            "shift_id": shift.id,
-                            "medewerker_id": keuze.id,
-                            "onderbouwing": onderbouwing,
-                            "door_llm": door_llm,
-                            "bedrijf_naam": bedrijf_naam,
-                        },
-                    },
-                ),
+                shift,
+                keuze,
+                onderbouwing=onderbouwing,
+                door_llm=door_llm,
+                bedrijf_naam=bedrijf_naam,
             )
             gekoppeld.append(keuze.naam)
 
@@ -164,6 +152,55 @@ class MatchingAgent(BaseAgent):
             "open_plekken": resterend,
         }
 
+    async def kandidaten_voor(self, sessie: AsyncSession, shift: Shift) -> list[User]:
+        """Wie er voor deze shift in aanmerking komt.
+
+        Publiek omdat het horecascherm dezelfde lijst toont als waaruit de agent
+        kiest. Twee lijsten die uiteen kunnen lopen zou betekenen dat een bedrijf
+        iemand aanklikt die de agent zou weigeren.
+        """
+        return await self._kandidaten(sessie, shift)
+
+    async def plan_kandidaat_in(
+        self,
+        sessie: AsyncSession,
+        shift: Shift,
+        kandidaat: User,
+        *,
+        onderbouwing: str,
+        door_llm: bool = False,
+        bedrijf_naam: str | None = None,
+    ) -> None:
+        """Leg één match vast via het normale uitvoerpad.
+
+        Ook wanneer het bedrijf zelf iemand aanwijst loopt het hierlangs, zodat
+        de actie in het activiteitenlog belandt en de shiftstatus meebeweegt.
+        """
+        if bedrijf_naam is None:
+            bedrijf_naam = await self._bedrijf_naam(sessie, shift.bedrijf_id)
+
+        await self.voer_uit(
+            sessie,
+            Voorstel(
+                afdeling=self.afdeling,
+                tier=Tier.ZELFSTANDIG,
+                logtekst=(
+                    f"Shift {shift.functie} bij {bedrijf_naam} gematcht met {kandidaat.naam}"
+                ),
+                actie={
+                    "uitvoerder": "matching.bevestig_match",
+                    "params": {
+                        "shift_id": shift.id,
+                        "medewerker_id": kandidaat.id,
+                        "onderbouwing": onderbouwing,
+                        "door_llm": door_llm,
+                        "bedrijf_naam": bedrijf_naam,
+                    },
+                },
+            ),
+        )
+        await self._werk_shiftstatus_bij(sessie, shift)
+
     async def _kies_kandidaat(
         self,
         sessie: AsyncSession,
@@ -176,14 +213,21 @@ class MatchingAgent(BaseAgent):
         Triviaal geval (één kandidaat, of een duidelijk levelverschil) gaat op
         regels. Pas als de kop-aan-kop staat, vragen we Claude om te kiezen.
         """
-        profielen = [await self._profiel(sessie, k, shift.datum) for k in kandidaten]
-        profielen.sort(key=lambda p: (-p["seizoen_uren"], p["no_shows"], p["id"]))
+        profielen = [await self._profiel(sessie, k, shift) for k in kandidaten]
+        # Wie zelf op de shift heeft gereageerd gaat voor. Dat is geen voorrang
+        # op level maar een filter ervoor: binnen de groep die gereageerd heeft,
+        # blijft de levelvolgorde onverkort gelden.
+        profielen.sort(
+            key=lambda p: (not p["gereageerd"], -p["seizoen_uren"], p["no_shows"], p["id"])
+        )
 
         beste = profielen[0]
         gelijkwaardig = [
             p
             for p in profielen
-            if p["level"] == beste["level"] and p["no_shows"] == beste["no_shows"]
+            if p["gereageerd"] == beste["gereageerd"]
+            and p["level"] == beste["level"]
+            and p["no_shows"] == beste["no_shows"]
         ]
 
         if len(gelijkwaardig) > 1:
@@ -195,8 +239,13 @@ class MatchingAgent(BaseAgent):
                     return kandidaat, onderbouwing, True
 
         kandidaat = next(k for k in kandidaten if k.id == beste["id"])
+        aanhef = (
+            "Zelf gereageerd op deze shift en de hoogste levelprioriteit"
+            if beste["gereageerd"]
+            else "Hoogste levelprioriteit"
+        )
         onderbouwing = (
-            f"Hoogste levelprioriteit ({beste['level_naam']}, "
+            f"{aanhef} ({beste['level_naam']}, "
             f"{beste['seizoen_uren']:.0f} uur dit seizoen) en ervaring met {shift.functie}."
         )
         return kandidaat, onderbouwing, False
@@ -209,6 +258,7 @@ class MatchingAgent(BaseAgent):
             f"{p['seizoen_uren']:.0f} uur dit seizoen, {p['no_shows']} no-show(s), "
             f"functies: {', '.join(p['functies']) or 'onbekend'}, "
             f"{p['shifts_deze_week']} shift(s) deze week"
+            + (", heeft zelf op deze shift gereageerd" if p["gereageerd"] else "")
             for p in profielen
         )
         situatie = (
@@ -522,11 +572,11 @@ class MatchingAgent(BaseAgent):
         )
         alle = list(resultaat.scalars().all())
 
+        # Iedereen die op deze shift al een match heeft gehad valt af, ook als
+        # die is geannuleerd of op een no-show is uitgelopen. Wie zojuist heeft
+        # afgezegd, moet niet meteen opnieuw op dezelfde shift worden gezet.
         al_gekoppeld = await sessie.execute(
-            select(Match.medewerker_id).where(
-                Match.shift_id == shift.id,
-                Match.status.notin_([str(MatchStatus.GEANNULEERD)]),
-            )
+            select(Match.medewerker_id).where(Match.shift_id == shift.id)
         )
         bezet_ids = set(al_gekoppeld.scalars().all())
 
@@ -561,7 +611,7 @@ class MatchingAgent(BaseAgent):
         return resultaat.scalars().first() is not None
 
     async def _profiel(
-        self, sessie: AsyncSession, gebruiker: User, shiftdatum: date
+        self, sessie: AsyncSession, gebruiker: User, shift: Shift
     ) -> dict[str, Any]:
         level = await self._level(sessie, gebruiker.id)
         info = level_voor_uren(level.seizoen_uren)
@@ -573,8 +623,21 @@ class MatchingAgent(BaseAgent):
             "level": info["level"],
             "level_naam": info["naam"],
             "no_shows": await self._aantal_no_shows(sessie, gebruiker.id),
-            "shifts_deze_week": await self._shifts_in_week(sessie, gebruiker.id, shiftdatum),
+            "shifts_deze_week": await self._shifts_in_week(sessie, gebruiker.id, shift.datum),
+            "gereageerd": await self._heeft_gereageerd(sessie, shift.id, gebruiker.id),
         }
+
+    async def _heeft_gereageerd(
+        self, sessie: AsyncSession, shift_id: int, medewerker_id: int
+    ) -> bool:
+        resultaat = await sessie.execute(
+            select(Reactie).where(
+                Reactie.shift_id == shift_id,
+                Reactie.medewerker_id == medewerker_id,
+                Reactie.status == str(ReactieStatus.OPEN),
+            )
+        )
+        return resultaat.scalars().first() is not None
 
     async def _level(self, sessie: AsyncSession, medewerker_id: int) -> Level:
         level = await sessie.get(Level, medewerker_id)
@@ -646,6 +709,17 @@ async def _bevestig_match(
     )
     sessie.add(match)
     await sessie.flush()
+
+    # De reactie is nu ingelost; hij hoeft niet nog een keer meegewogen te worden.
+    gereageerd = await sessie.execute(
+        select(Reactie).where(
+            Reactie.shift_id == match.shift_id,
+            Reactie.medewerker_id == match.medewerker_id,
+            Reactie.status == str(ReactieStatus.OPEN),
+        )
+    )
+    for reactie in gereageerd.scalars().all():
+        reactie.status = str(ReactieStatus.GEHONOREERD)
 
     medewerker = await sessie.get(User, params["medewerker_id"])
     naam = medewerker.naam if medewerker else f"medewerker {params['medewerker_id']}"

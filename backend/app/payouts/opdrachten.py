@@ -22,7 +22,7 @@ from app.config import get_settings
 from app.core.activity import log_activiteit
 from app.core.domein import Afdeling, Tier, UitbetalingStatus, nu
 from app.core.tiers import registreer_uitvoerder
-from app.db.models import Beslissing, Uitbetalingsopdracht
+from app.db.models import Beslissing, Referral, Uitbetalingsopdracht
 
 
 @registreer_uitvoerder("directie.keur_uitbetaling_goed")
@@ -153,6 +153,19 @@ async def markeer_handmatig_voldaan(
 
     opdracht.status = str(UitbetalingStatus.HANDMATIG_VOLDAAN)
     opdracht.handmatig_voldaan_op = nu()
+
+    # Was dit een vriendenbonus, dan is de referral hiermee afgerond. Zonder deze
+    # stap blijft hij eeuwig op "ter-goedkeuring" staan en ziet de aanbrenger in
+    # de app nooit dat zijn bonus binnen is.
+    if opdracht.soort == "vriendenbonus" and opdracht.begunstigde_user_id is not None:
+        openstaand = await sessie.execute(
+            select(Referral).where(
+                Referral.medewerker_id == opdracht.begunstigde_user_id,
+                Referral.bonus_status == "ter-goedkeuring",
+            )
+        )
+        for referral in openstaand.scalars().all():
+            referral.bonus_status = "uitbetaald"
 
     bedrag = opdracht.bedrag_cent / 100
     await log_activiteit(

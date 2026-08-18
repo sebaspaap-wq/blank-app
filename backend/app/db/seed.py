@@ -14,7 +14,7 @@ from datetime import timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.domein import ShiftStatus, nu
+from app.core.domein import MatchStatus, ShiftStatus, nu
 from app.db.models import (
     Bedrijf,
     Campagne,
@@ -23,19 +23,21 @@ from app.db.models import (
     Hoek,
     Kennisbankitem,
     Level,
+    Match,
     Referral,
     Shift,
     User,
 )
 from app.db.session import maak_tabellen, sessie
 
+# (naam, functies, beschikbare dagen, seizoensuren, ervaringsjaren, uurloonwens)
 MEDEWERKERS = [
-    ("Sanne de Vries", ["bediening", "bar"], ["do", "vr", "za", "zo"], 74.0),
-    ("Milan Bakker", ["bar", "bediening"], ["vr", "za", "zo"], 61.0),
-    ("Tom Hendriks", ["bediening"], ["za", "zo"], 32.0),
-    ("Lisa Mulder", ["keuken"], ["ma", "di", "wo", "do", "vr"], 50.0),
-    ("Noor Jansen", ["bediening", "host / runner"], ["za", "zo", "ma"], 18.0),
-    ("Daan Visser", ["keuken", "bediening"], ["wo", "do", "vr", "za"], 61.0),
+    ("Sanne de Vries", ["bediening", "bar"], ["do", "vr", "za", "zo"], 74.0, 2.0, "€13,50"),
+    ("Milan Bakker", ["bar", "bediening"], ["vr", "za", "zo"], 61.0, 1.0, "€14,00"),
+    ("Tom Hendriks", ["bediening"], ["za", "zo"], 32.0, 0.5, "€13,00"),
+    ("Lisa Mulder", ["keuken"], ["ma", "di", "wo", "do", "vr"], 50.0, 3.0, "€14,50"),
+    ("Noor Jansen", ["bediening", "host / runner"], ["za", "zo", "ma"], 18.0, 0.0, "€12,50"),
+    ("Daan Visser", ["keuken", "bediening"], ["wo", "do", "vr", "za"], 61.0, 4.0, "€15,00"),
 ]
 
 BEDRIJVEN = [
@@ -43,6 +45,14 @@ BEDRIJVEN = [
     ("Beachclub Noord", "Zandvoort"),
     ("Café De Kust", "Zandvoort"),
     ("Strandtent Boulevard", "Zandvoort"),
+]
+
+#: Contactpersoon per bedrijf, in dezelfde volgorde als ``BEDRIJVEN``.
+HORECA_CONTACTEN = [
+    ("Ruben Postma", "ruben@strandtentzuid.nl"),
+    ("Iris de Groot", "iris@beachclubnoord.nl"),
+    ("Joost Meijer", "joost@cafedekust.nl"),
+    ("Femke Smit", "femke@strandtentboulevard.nl"),
 ]
 
 DOELEN = [
@@ -187,18 +197,20 @@ async def seed(s: AsyncSession) -> None:
     s.add(User(naam="Sebas", rol="directie", email="sebas@wosz.nl"))
 
     medewerkers: list[User] = []
-    for naam, functies, dagen, uren in MEDEWERKERS:
+    for naam, functies, dagen, _uren, ervaring, wens in MEDEWERKERS:
         gebruiker = User(
             naam=naam,
             rol="medewerker",
             functies=functies,
             beschikbare_dagen=dagen,
+            ervaring_jaren=ervaring,
+            gewenst_uurloon=wens,
         )
         s.add(gebruiker)
         medewerkers.append(gebruiker)
     await s.flush()
 
-    for gebruiker, (_, _, _, uren) in zip(medewerkers, MEDEWERKERS, strict=True):
+    for gebruiker, (_, _, _, uren, _e, _w) in zip(medewerkers, MEDEWERKERS, strict=True):
         from app.core.domein import level_voor_uren
 
         s.add(
@@ -216,6 +228,16 @@ async def seed(s: AsyncSession) -> None:
         bedrijven.append(bedrijf)
     await s.flush()
 
+    # Elk bedrijf krijgt een contactpersoon met een horeca-account, zodat het
+    # horecascherm meteen bij een echt bedrijf hoort in plaats van bij een id
+    # dat je zelf moet raden.
+    for bedrijf, (contact, mail) in zip(bedrijven, HORECA_CONTACTEN, strict=True):
+        gebruiker = User(naam=contact, rol="horeca", email=mail, bedrijf_id=bedrijf.id)
+        s.add(gebruiker)
+        await s.flush()
+        bedrijf.contact_user_id = gebruiker.id
+    await s.flush()
+
     # Anker de shifts op het eerstvolgende weekend: dan sluiten ze aan op de
     # beschikbaarheid van de demomedewerkers, zodat een 'match run' meteen iets
     # zichtbaars oplevert.
@@ -225,12 +247,12 @@ async def seed(s: AsyncSession) -> None:
     zondag = vrijdag + timedelta(days=2)
 
     shifts = [
-        (bedrijven[0], zaterdag, "17:00-01:00", "bediening", 2, 8.0),
-        (bedrijven[1], zondag, "12:00-18:00", "keuken", 1, 6.0),
-        (bedrijven[2], vrijdag, "18:00-00:00", "bar", 1, 6.0),
-        (bedrijven[3], zondag, "10:00-16:00", "host / runner", 2, 6.0),
+        (bedrijven[0], zaterdag, "17:00-01:00", "bediening", 2, 8.0, "€13,00 – €14,50"),
+        (bedrijven[1], zondag, "12:00-18:00", "keuken", 1, 6.0, "€13,50"),
+        (bedrijven[2], vrijdag, "18:00-00:00", "bar", 1, 6.0, "€12,50 – €13,50"),
+        (bedrijven[3], zondag, "10:00-16:00", "host / runner", 2, 6.0, "€12,50"),
     ]
-    for bedrijf, datum, tijd, functie, aantal, duur in shifts:
+    for bedrijf, datum, tijd, functie, aantal, duur, uurloon in shifts:
         s.add(
             Shift(
                 bedrijf_id=bedrijf.id,
@@ -239,9 +261,35 @@ async def seed(s: AsyncSession) -> None:
                 functie=functie,
                 aantal_gevraagd=aantal,
                 duur_uren=duur,
+                uurloon=uurloon,
                 status=str(ShiftStatus.OPEN),
             )
         )
+
+    # Een afgeronde shift van vorige week, zodat het medewerkerscherm ook
+    # geschiedenis heeft en het horecascherm gewerkte uren kan tonen.
+    vorige_zaterdag = zaterdag - timedelta(days=7)
+    afgerond = Shift(
+        bedrijf_id=bedrijven[0].id,
+        datum=vorige_zaterdag,
+        tijd="16:00-22:00",
+        functie="bediening",
+        aantal_gevraagd=1,
+        duur_uren=6.0,
+        uurloon="€13,25",
+        status=str(ShiftStatus.GEMATCHT),
+    )
+    s.add(afgerond)
+    await s.flush()
+    s.add(
+        Match(
+            shift_id=afgerond.id,
+            medewerker_id=medewerkers[0].id,
+            status=str(MatchStatus.GEWERKT),
+            uren_gewerkt=6.0,
+            onderbouwing="Hoogste levelprioriteit en ervaring met bediening.",
+        )
+    )
 
     for label, waarde, doel, is_euro, volgorde in DOELEN:
         s.add(

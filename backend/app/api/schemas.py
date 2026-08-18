@@ -337,12 +337,174 @@ class UitbetalingUit(BaseModel):
     status: str
 
 
+# ---------------------------------------------------------------------------
+# Medewerkerscherm
+#
+# De veldnamen hieronder zijn niet gekozen maar overgenomen: ``shiftCardHtml()``
+# leest ``s.role``, ``s.datum``, ``s.tijd``, ``s.plek`` en ``s.uurloon``, en
+# ``renderMijnShifts()`` leest daarnaast ``s.status`` en ``s.uren``. Vandaar
+# ``role`` in het Engels tussen verder Nederlandse velden.
+# ---------------------------------------------------------------------------
+
+
+class ShiftUit(BaseModel):
+    """Eén kaart in 'Beschikbare shifts' — ``shiftCardHtml(s, true)``."""
+
+    id: int
+    role: str
+    datum: str
+    tijd: str
+    plek: str
+    uurloon: str
+
+
+class MijnShiftUit(BaseModel):
+    """Een regel onder 'Mijn shifts' — aankomend of geschiedenis.
+
+    ``match_id`` staat er los in omdat annuleren en uren doorgeven een match
+    aanwijzen; de frontend gebruikt nu nog de lijstindex.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    match_id: int = Field(serialization_alias="matchId")
+    role: str
+    datum: str
+    tijd: str
+    plek: str
+    status: str
+    uurloon: str | None = None
+    uren: float | None = None
+
+
+class MijnShiftsUit(BaseModel):
+    aankomend: list[MijnShiftUit]
+    geschiedenis: list[MijnShiftUit]
+
+
+class VriendUit(BaseModel):
+    """Een regel in 'Vrienden aangemeld' — ``renderVrienden()``."""
+
+    naam: str
+    uren: float
+    status: str
+
+
+class MedewerkerUit(BaseModel):
+    """Alles wat het medewerkerscherm in één keer nodig heeft."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: int
+    naam: str
+    seizoen_uren: float = Field(serialization_alias="seizoenUren")
+    beschikbaar: list[ShiftUit]
+    aankomend: list[MijnShiftUit]
+    geschiedenis: list[MijnShiftUit]
+    vrienden: list[VriendUit]
+
+
+class AanmeldingIn(BaseModel):
+    """Body van ``POST /api/medewerker/aanmelden``."""
+
+    naam: str = Field(min_length=2, max_length=120)
+    email: str | None = Field(default=None, max_length=200)
+    telefoon: str | None = Field(default=None, max_length=40)
+    functies: list[str] = Field(default_factory=list)
+    beschikbare_dagen: list[str] = Field(default_factory=list)
+    ervaring_jaren: float = Field(default=0.0, ge=0, le=60)
+    gewenst_uurloon: str | None = Field(default=None, max_length=40)
+
+
+class VriendIn(BaseModel):
+    """Body van ``POST /api/medewerker/{id}/vrienden`` — ``submitInvite()``."""
+
+    naam: str = Field(min_length=2, max_length=120)
+    email: str | None = Field(default=None, max_length=200)
+
+
+# ---------------------------------------------------------------------------
+# Horecascherm
+# ---------------------------------------------------------------------------
+
+
+class KandidaatUit(BaseModel):
+    """Een kandidaat onder een aanvraag — ``aanvraagCardHtml()``."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    medewerker_id: int = Field(serialization_alias="medewerkerId")
+    naam: str
+    info: str
+    wens: str
+
+
+class AanvraagUit(BaseModel):
+    """Eén personeelsvraag zoals het horecascherm hem toont."""
+
+    id: int
+    functie: str
+    datum: str
+    tijd: str
+    gevraagd: int
+    gematcht: int
+    uurloon: str
+    kandidaten: list[KandidaatUit]
+
+
+class HorecaStatsUit(BaseModel):
+    """De vier tellers bovenaan het horecascherm.
+
+    De matchtijd staat in minuten, niet in uren. De agent matcht meestal binnen
+    een minuut; in uren afgerond zou daar altijd "0u" staan, wat leest als
+    "geen gegevens" terwijl het juist het beste denkbare cijfer is.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    actieve_aanvragen: int = Field(serialization_alias="actieveAanvragen")
+    gematcht_deze_week: int = Field(serialization_alias="gematchtDezeWeek")
+    uren_deze_maand: int = Field(serialization_alias="urenDezeMaand")
+    gemiddelde_matchtijd_minuten: int | None = Field(
+        serialization_alias="gemiddeldeMatchtijdMinuten"
+    )
+
+
+class HorecaUit(BaseModel):
+    """Alles wat het horecascherm in één keer nodig heeft."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    bedrijf_id: int = Field(serialization_alias="bedrijfId")
+    bedrijf: str
+    stats: HorecaStatsUit
+    aanvragen: list[AanvraagUit]
+
+
+class AanvraagIn(BaseModel):
+    """Body van ``POST /api/horeca/{bedrijf_id}/aanvragen`` — ``submitRequest()``.
+
+    ``datum`` en ``tijd`` komen als vrije tekst uit de invulvelden. De datum
+    wordt hier omgezet naar een echte datum; lukt dat niet, dan is dat een
+    invoerfout en geen shift die stilletjes op vandaag belandt.
+    """
+
+    functie: str = Field(min_length=2, max_length=60)
+    datum: str = Field(min_length=1, max_length=40)
+    tijd: str = Field(min_length=1, max_length=40)
+    aantal: int = Field(default=1, ge=1, le=50)
+    uurloon: str | None = Field(default=None, max_length=40)
+
+
 def afdeling_of_none(waarde: str) -> str | None:
     """Geef ``None`` terug voor afdelingen die de frontend niet kent."""
     return waarde if waarde in {str(a) for a in AFDELINGSAGENTS} else None
 
 
 __all__ = [
+    "AanmeldingIn",
+    "AanvraagIn",
+    "AanvraagUit",
     "ActiviteitUit",
     "BerichtUit",
     "BeslissingUit",
@@ -356,17 +518,26 @@ __all__ = [
     "DagrapportUit",
     "DashboardUit",
     "FactuurUit",
+    "HorecaStatsUit",
+    "HorecaUit",
+    "KandidaatUit",
     "KeuzeIn",
+    "MedewerkerUit",
+    "MijnShiftUit",
+    "MijnShiftsUit",
     "NieuweHoekIn",
     "OnboardingIn",
     "OptieUit",
     "ResultaatIn",
+    "ShiftUit",
     "SjabloonUit",
     "UitbetalingUit",
     "UrenIn",
     "UrengeschilIn",
     "VoortgangUit",
     "VraagIn",
+    "VriendIn",
+    "VriendUit",
     "afdeling_of_none",
     "Afdeling",
 ]

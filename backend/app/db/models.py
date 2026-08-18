@@ -32,6 +32,7 @@ from app.core.domein import (
     ContentStatus,
     EventStatus,
     MatchStatus,
+    ReactieStatus,
     ShiftStatus,
     SocialKanaal,
     Tier,
@@ -66,6 +67,13 @@ class User(Base):
     beschikbare_dagen: Mapped[list[str]] = mapped_column(JSON, default=list)
     actief: Mapped[bool] = mapped_column(Boolean, default=True)
     geschorst: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Uitbreiding: wat een bedrijf van een kandidaat te zien krijgt.
+    ervaring_jaren: Mapped[float] = mapped_column(Float, default=0.0)
+    gewenst_uurloon: Mapped[str | None] = mapped_column(String(40))
+
+    # Uitbreiding: welk bedrijf hoort bij een horeca-account.
+    bedrijf_id: Mapped[int | None] = mapped_column(ForeignKey("bedrijven.id"))
 
     aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
 
@@ -109,6 +117,10 @@ class Shift(Base):
     uurloon: Mapped[str | None] = mapped_column(String(40))
     duur_uren: Mapped[float] = mapped_column(Float, default=6.0)
 
+    # Uitbreiding: nodig om te kunnen meten hoe snel een aanvraag gevuld raakt —
+    # het cijfer dat het horecascherm bovenaan toont.
+    aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+
     bedrijf: Mapped[Bedrijf] = relationship()
     matches: Mapped[list["Match"]] = relationship(back_populates="shift")
 
@@ -131,6 +143,26 @@ class Match(Base):
 
     shift: Mapped[Shift] = relationship(back_populates="matches")
     medewerker: Mapped[User] = relationship()
+
+
+class Reactie(Base):
+    """Een medewerker die zelf op een shift reageert.
+
+    Bewust géén ``Match``. Een match betekent binnen WOSZ dat de Matching-agent
+    iemand daadwerkelijk heeft ingepland — daar hangen uren, no-shows en levels
+    aan. Een reactie is alleen "ik wil deze shift". De agent weegt hem mee als
+    sterkste voorkeur, maar blijft degene die de plek toekent; anders zou wie het
+    snelst klikt de levelprioriteit omzeilen.
+    """
+
+    __tablename__ = "reacties"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    shift_id: Mapped[int] = mapped_column(ForeignKey("shifts.id"), nullable=False)
+    medewerker_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default=ReactieStatus.OPEN)
+
+    aangemaakt_op: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
 
 
 class Level(Base):
@@ -479,6 +511,7 @@ __all__ = [
     "Bedrijf",
     "Shift",
     "Match",
+    "Reactie",
     "Level",
     "Referral",
     "Factuur",
