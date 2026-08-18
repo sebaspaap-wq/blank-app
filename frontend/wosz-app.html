@@ -573,32 +573,39 @@
         <div class="content">
           <div class="card">
             <div class="form-grid">
-              <div class="f-field"><label>Naam</label><input type="text" value="Sanne de Vries"></div>
-              <div class="f-field"><label>Leeftijd</label><input type="text" value="22"></div>
-              <div class="f-field"><label>Woonplaats</label><input type="text" value="Zandvoort"></div>
-              <div class="f-field"><label>Gewenst uurloon</label><input type="text" value="€13,50"></div>
+              <div class="f-field"><label>Naam</label><input type="text" id="prof-naam"></div>
+              <div class="f-field"><label>E-mailadres</label><input type="email" id="prof-email"></div>
+              <div class="f-field"><label>Telefoon</label><input type="text" id="prof-telefoon"></div>
+              <div class="f-field"><label>Woonplaats</label><input type="text" id="prof-woonplaats"></div>
+              <div class="f-field"><label>Gewenst uurloon</label><input type="text" id="prof-uurloon" placeholder="bv. €13,50"></div>
             </div>
 
             <div style="margin-top:22px;">
               <label style="display:block; font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:rgba(18,36,42,0.5); margin-bottom:10px;">Functies</label>
               <div style="display:flex; gap:8px; flex-wrap:wrap;" id="profiel-functies">
-                <span class="chip on" onclick="toggleChip(this)">Bediening</span>
-                <span class="chip" onclick="toggleChip(this)">Keuken</span>
-                <span class="chip on" onclick="toggleChip(this)">Bar</span>
-                <span class="chip" onclick="toggleChip(this)">Host / runner</span>
-                <span class="chip" onclick="toggleChip(this)">Schoonmaak</span>
+                <span class="chip" data-functie="bediening" onclick="toggleChip(this)">Bediening</span>
+                <span class="chip" data-functie="keuken" onclick="toggleChip(this)">Keuken</span>
+                <span class="chip" data-functie="bar" onclick="toggleChip(this)">Bar</span>
+                <span class="chip" data-functie="host / runner" onclick="toggleChip(this)">Host / runner</span>
+                <span class="chip" data-functie="schoonmaak" onclick="toggleChip(this)">Schoonmaak</span>
               </div>
             </div>
 
             <div style="margin-top:22px;">
               <label style="display:block; font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:rgba(18,36,42,0.5); margin-bottom:10px;">Beschikbaarheid</label>
-              <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <span class="chip" onclick="toggleChip(this)">Doordeweeks</span>
-                <span class="chip on" onclick="toggleChip(this)">Weekend</span>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;" id="profiel-dagen">
+                <span class="chip" data-dag="ma" onclick="toggleChip(this)">Ma</span>
+                <span class="chip" data-dag="di" onclick="toggleChip(this)">Di</span>
+                <span class="chip" data-dag="wo" onclick="toggleChip(this)">Wo</span>
+                <span class="chip" data-dag="do" onclick="toggleChip(this)">Do</span>
+                <span class="chip" data-dag="vr" onclick="toggleChip(this)">Vr</span>
+                <span class="chip" data-dag="za" onclick="toggleChip(this)">Za</span>
+                <span class="chip" data-dag="zo" onclick="toggleChip(this)">Zo</span>
               </div>
+              <div style="font-family:var(--mono); font-size:11.5px; color:rgba(18,36,42,0.5); margin-top:10px;">Je krijgt alleen shifts te zien op de dagen die je hier aanvinkt.</div>
             </div>
 
-            <button class="btn btn-coral btn-sm" style="margin-top:26px;" onclick="toast('Profiel opgeslagen')">Wijzigingen opslaan</button>
+            <button class="btn btn-coral btn-sm" style="margin-top:26px;" onclick="bewaarProfiel()">Wijzigingen opslaan</button>
           </div>
         </div>
       </div>
@@ -691,12 +698,7 @@
           <div class="card">
             <table>
               <thead><tr><th>Naam</th><th>Functie</th><th>Uren totaal</th><th>Laatste shift</th><th>Contact</th></tr></thead>
-              <tbody>
-                <tr><td>Sanne de Vries</td><td>Bediening</td><td>36u</td><td>Do 14 aug</td><td>sanne@voorbeeld.nl</td></tr>
-                <tr><td>Milan Bakker</td><td>Bar</td><td>52u</td><td>Za 9 aug</td><td>milan@voorbeeld.nl</td></tr>
-                <tr><td>Femke Jansen</td><td>Keuken</td><td>24u</td><td>Zo 10 aug</td><td>femke@voorbeeld.nl</td></tr>
-                <tr><td>Daan Visser</td><td>Bediening</td><td>30u</td><td>Vr 8 aug</td><td>daan@voorbeeld.nl</td></tr>
-              </tbody>
+              <tbody id="h-medewerkers-body"></tbody>
             </table>
           </div>
         </div>
@@ -709,11 +711,7 @@
           <div class="card">
             <table>
               <thead><tr><th>Periode</th><th>Uren</th><th>Tarief</th><th>Totaal</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr><td>1–15 augustus 2026</td><td>142u</td><td>€2,00 / u</td><td>€284,00</td><td><span class="badge open">Open</span></td></tr>
-                <tr><td>16–31 juli 2026</td><td>168u</td><td>€2,00 / u</td><td>€336,00</td><td><span class="badge done">Betaald</span></td></tr>
-                <tr><td>1–15 juli 2026</td><td>154u</td><td>€2,00 / u</td><td>€308,00</td><td><span class="badge done">Betaald</span></td></tr>
-              </tbody>
+              <tbody id="h-facturen-body"></tbody>
             </table>
           </div>
         </div>
@@ -725,15 +723,13 @@
         <div class="content">
           <div class="card">
             <div class="form-grid">
-              <div class="f-field"><label>Bedrijfsnaam</label><input type="text" value="Strandtent Zuid"></div>
-              <div class="f-field">
-                <label>Type bedrijf</label>
-                <select><option>Strandtent / beachclub</option><option>Restaurant</option><option>Café / bar</option><option>Hotel</option></select>
-              </div>
-              <div class="f-field"><label>Locatie</label><input type="text" value="Zandvoort aan Zee"></div>
-              <div class="f-field"><label>Contactpersoon</label><input type="text" value="R. de Boer"></div>
+              <div class="f-field"><label>Bedrijfsnaam</label><input type="text" id="bprof-naam"></div>
+              <div class="f-field"><label>Locatie</label><input type="text" id="bprof-plaats"></div>
+              <div class="f-field"><label>Contactpersoon</label><input type="text" id="bprof-contact"></div>
+              <div class="f-field"><label>E-mailadres</label><input type="email" id="bprof-email"></div>
+              <div class="f-field"><label>WOSZ-tarief</label><input type="text" id="bprof-tarief" disabled></div>
             </div>
-            <button class="btn btn-coral btn-sm" style="margin-top:22px;" onclick="toast('Bedrijfsprofiel opgeslagen')">Wijzigingen opslaan</button>
+            <button class="btn btn-coral btn-sm" style="margin-top:22px;" onclick="bewaarBedrijfsprofiel()">Wijzigingen opslaan</button>
           </div>
         </div>
       </div>
@@ -912,11 +908,12 @@
     if(role === 'medewerker') renderMedewerker();
     else if(role === 'horeca') renderHoreca();
     else renderDirectie();
+    startVerversing();
     const prefix = ROLE_PREFIX[role];
     replayStagger(document.getElementById('p-' + prefix + '-dashboard'));
   }
   function logout(){
-    stopDirectieVerversing();
+    stopVerversing();
     document.getElementById('screen-medewerker').classList.remove('active');
     document.getElementById('screen-horeca').classList.remove('active');
     document.getElementById('screen-directie').classList.remove('active');
@@ -975,25 +972,25 @@
     toast('Referral-link gekopieerd');
   }
 
-  /* ================= MEDEWERKER DATA & RENDER ================= */
-  let beschikbaar = [
-    { id:1, role:'Bediening', datum:'Za 16 aug', tijd:'17:00–01:00', plek:'Strandtent Zuid', uurloon:'€13,00 – €14,50' },
-    { id:2, role:'Keuken', datum:'Zo 17 aug', tijd:'12:00–18:00', plek:'Beachclub Noord', uurloon:'€13,50' },
-    { id:3, role:'Bar', datum:'Vr 15 aug', tijd:'18:00–00:00', plek:'Café De Kust', uurloon:'€12,50 – €13,50' },
-    { id:4, role:'Host / runner', datum:'Ma 18 aug', tijd:'10:00–16:00', plek:'Restaurant Zee', uurloon:'€12,50' },
-  ];
-  let mijnAankomend = [
-    { role:'Bediening', datum:'Do 14 aug', tijd:'16:00–23:00', plek:'Strandtent Boulevard', status:'Bevestigd', uurloon:'€13,25' },
-  ];
-  let mijnGeschiedenis = [
-    { role:'Bediening', datum:'Zo 3 aug', tijd:'16:00–22:00', plek:'Strandtent Zuid', uren:6 },
-    { role:'Bar', datum:'Za 26 jul', tijd:'18:00–00:00', plek:'Café De Kust', uren:6 },
-    { role:'Bediening', datum:'Vr 25 jul', tijd:'17:00–23:00', plek:'Strandtent Boulevard', uren:6 },
-  ];
-  let vrienden = [
-    { naam:'Tom Hendriks', uren:32, status:'Bezig' },
-    { naam:'Lisa Mulder', uren:50, status:'Uitbetaald · €20' },
-  ];
+  /* ================= MEDEWERKER DATA & RENDER =================
+     Deze lijsten waren hardcoded demodata. Ze zijn nu leeg bij het laden en
+     worden gevuld door laadMedewerkerData(); de renderfuncties eronder zijn
+     ongewijzigd, omdat de API exact dezelfde velden teruggeeft. */
+
+  /* Welke medewerker er is ingelogd. Er is nog geen echte inlog, dus dit is
+     instelbaar via ?medewerker=3 in de adresbalk. Zodra er authenticatie is,
+     komt dit id daarvandaan en verdwijnt deze regel. */
+  const MEDEWERKER_ID = Number(
+    new URLSearchParams(window.location.search).get('medewerker')
+    || window.WOSZ_MEDEWERKER_ID || 2
+  );
+
+  let beschikbaar = [];
+  let mijnAankomend = [];
+  let mijnGeschiedenis = [];
+  let vrienden = [];
+  let medewerkerNaam = '';
+  let mijnProfiel = { naam:'', functies:[], beschikbareDagen:[] };
 
   /* ---- Levelsysteem: uren dit seizoen bepalen level + bonus ---- */
   const LEVELS = [
@@ -1004,7 +1001,7 @@
     { level:5, naam:'WOSZ Legend', vanaf:200, bonus:50, perk:'Eerste keuze bij nieuwe shifts volgend seizoen', icon:'👑' },
     { level:6, naam:'Seizoenslegende', vanaf:300, bonus:75, perk:'Exclusieve badge + uitnodiging eindseizoensfeest', icon:'🏆' },
   ];
-  let seizoenUren = 42; // demo: totaal gewerkte uren dit seizoen
+  let seizoenUren = 0; // wordt gevuld vanuit de backend
 
   function huidigLevelIndex(uren){
     let idx = 0;
@@ -1087,13 +1084,98 @@
     renderLevelHistory();
   }
 
-  function renderMedewerker(){
+  /* Haalt het hele medewerkerscherm op in één aanroep en tekent het opnieuw.
+     Elke actie (reageren, annuleren, uitnodigen) geeft dezelfde structuur
+     terug, dus die kunnen het antwoord er rechtstreeks in stoppen zonder een
+     tweede rondje naar de server. */
+  function neemMedewerkerData(data){
+    medewerkerNaam = data.naam;
+    seizoenUren = data.seizoenUren;
+    beschikbaar = data.beschikbaar;
+    mijnAankomend = data.aankomend;
+    mijnGeschiedenis = data.geschiedenis;
+    vrienden = data.vrienden;
+    mijnProfiel = data.profiel;
+    tekenMedewerker();
+  }
+
+  function renderProfiel(){
+    document.querySelectorAll('#screen-medewerker .sidebar-user .name, #p-m-dashboard .hcontent h1')
+      .forEach(el => { el.textContent = medewerkerNaam; });
+
+    zetVeld('prof-naam', mijnProfiel.naam);
+    zetVeld('prof-email', mijnProfiel.email);
+    zetVeld('prof-telefoon', mijnProfiel.telefoon);
+    zetVeld('prof-woonplaats', mijnProfiel.woonplaats);
+    zetVeld('prof-uurloon', mijnProfiel.gewenstUurloon);
+
+    const functies = mijnProfiel.functies || [];
+    document.querySelectorAll('#profiel-functies .chip').forEach(chip => {
+      chip.classList.toggle('on', functies.includes(chip.dataset.functie));
+    });
+    const dagen = mijnProfiel.beschikbareDagen || [];
+    document.querySelectorAll('#profiel-dagen .chip').forEach(chip => {
+      chip.classList.toggle('on', dagen.includes(chip.dataset.dag));
+    });
+  }
+
+  function zetVeld(id, waarde){
+    const el = document.getElementById(id);
+    if(el) el.value = waarde || '';
+  }
+  function leesVeld(id){
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  }
+  function gekozenChips(containerId, attribuut){
+    return Array.from(document.querySelectorAll(`#${containerId} .chip.on`))
+      .map(chip => chip.dataset[attribuut]);
+  }
+
+  async function bewaarProfiel(){
+    const naam = leesVeld('prof-naam');
+    if(naam.length < 2){ toast('Vul je naam in'); return; }
+    try {
+      neemMedewerkerData(await apiPost(`/api/medewerker/${MEDEWERKER_ID}/profiel`, {
+        naam,
+        email: leesVeld('prof-email') || null,
+        telefoon: leesVeld('prof-telefoon') || null,
+        woonplaats: leesVeld('prof-woonplaats') || null,
+        gewenst_uurloon: leesVeld('prof-uurloon') || null,
+        functies: gekozenChips('profiel-functies', 'functie'),
+        beschikbare_dagen: gekozenChips('profiel-dagen', 'dag'),
+      }));
+      toast('Profiel opgeslagen');
+    } catch(err){
+      toast(err.uitleg || 'Opslaan lukte niet');
+    }
+  }
+
+  async function renderMedewerker(){
+    try {
+      neemMedewerkerData(await apiGet(`/api/medewerker/${MEDEWERKER_ID}`));
+    } catch(err){
+      toonMedewerkerFout(err);
+    }
+  }
+
+  function tekenMedewerker(){
     animateCount('m-stat-open', beschikbaar.length, 500);
     renderBeschikbaar();
     renderMijnShifts();
     renderVrienden();
     renderDashPreview();
     renderLevels();
+    renderProfiel();
+  }
+
+  function toonMedewerkerFout(err){
+    console.error(err);
+    const melding = `<div class="empty"><b>Geen verbinding met de backend.</b><br>Draait de API op ${API_BASE}?</div>`;
+    ['m-beschikbaar-list', 'm-dash-preview', 'm-mijn-aankomend'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = melding;
+    });
   }
 
   function shiftCardHtml(s, withAction){
@@ -1117,27 +1199,31 @@
     el.innerHTML = beschikbaar.length ? beschikbaar.map(s => shiftCardHtml(s, true)).join('') : `<div class="empty">Geen beschikbare shifts op dit moment. Kom later terug!</div>`;
   }
 
-  function reageerShift(id){
-    const idx = beschikbaar.findIndex(s => s.id === id);
-    if(idx === -1) return;
-    const s = beschikbaar[idx];
-    beschikbaar.splice(idx,1);
-    mijnAankomend.unshift({ role:s.role, datum:s.datum, tijd:s.tijd, plek:s.plek, status:'Bevestigd', uurloon:s.uurloon });
-    document.getElementById('m-stat-open').textContent = beschikbaar.length;
-    renderBeschikbaar();
-    renderMijnShifts();
-    renderDashPreview();
-    toast('Aangemeld voor shift bij ' + s.plek);
+  /* Reageren is een verzoek, geen boeking. De Matching-agent beslist wie de
+     shift krijgt — wie meer uren heeft gemaakt gaat voor. Daarom kijken we in
+     het antwoord of de shift er ook echt bij staat. */
+  async function reageerShift(id){
+    const s = beschikbaar.find(x => x.id === id);
+    if(!s) return;
+    try {
+      const voorAantal = mijnAankomend.length;
+      neemMedewerkerData(await apiPost(`/api/medewerker/${MEDEWERKER_ID}/shifts/${id}/reageer`));
+      toast(mijnAankomend.length > voorAantal
+        ? 'Je hebt de shift bij ' + s.plek
+        : 'Reactie doorgegeven — je hoort of je de shift krijgt');
+    } catch(err){
+      toast(err.uitleg || 'Reageren lukte niet');
+    }
   }
 
   function renderMijnShifts(){
     const a = document.getElementById('m-mijn-aankomend');
-    a.innerHTML = mijnAankomend.length ? mijnAankomend.map((s,i) => `
+    a.innerHTML = mijnAankomend.length ? mijnAankomend.map(s => `
       <div class="list-row">
         <div class="info"><b>${s.role} · ${s.plek}</b><span>${s.datum} · ${s.tijd}${s.uurloon ? ' · ' + s.uurloon + '/u' : ''}</span></div>
         <div style="display:flex; align-items:center; gap:12px;">
           <span class="badge confirmed">${s.status}</span>
-          <button class="btn btn-outline btn-sm" onclick="annuleerShift(${i})">Annuleren</button>
+          <button class="btn btn-outline btn-sm" onclick="annuleerShift(${s.matchId})">Annuleren</button>
         </div>
       </div>`).join('') : `<div class="empty">Nog geen aankomende shifts. Bekijk de beschikbare shifts!</div>`;
 
@@ -1149,11 +1235,15 @@
       </div>`).join('') : `<div class="empty">Nog geen shiftgeschiedenis.</div>`;
   }
 
-  function annuleerShift(i){
-    const s = mijnAankomend[i];
-    mijnAankomend.splice(i,1);
-    renderMijnShifts();
-    toast('Shift geannuleerd bij ' + s.plek);
+  async function annuleerShift(matchId){
+    const s = mijnAankomend.find(x => x.matchId === matchId);
+    if(!s) return;
+    try {
+      neemMedewerkerData(await apiPost(`/api/medewerker/${MEDEWERKER_ID}/matches/${matchId}/annuleer`));
+      toast('Shift geannuleerd bij ' + s.plek);
+    } catch(err){
+      toast(err.uitleg || 'Annuleren lukte niet');
+    }
   }
 
   function setMijnShiftsTab(tab, e){
@@ -1176,33 +1266,134 @@
   }
 
   function openInviteForm(){ document.getElementById('m-invite-form').style.display = 'block'; }
-  function submitInvite(){
+  async function submitInvite(){
     const naam = document.getElementById('invite-naam').value.trim();
+    const email = document.getElementById('invite-email').value.trim();
     if(!naam) { toast('Vul een naam in'); return; }
-    vrienden.push({ naam, uren:0, status:'Bezig' });
-    document.getElementById('invite-naam').value = '';
-    document.getElementById('invite-email').value = '';
-    document.getElementById('m-invite-form').style.display = 'none';
-    renderVrienden();
-    toast('Uitnodiging verstuurd naar ' + naam);
+    try {
+      vrienden = await apiPost(`/api/medewerker/${MEDEWERKER_ID}/vrienden`, { naam, email: email || null });
+      document.getElementById('invite-naam').value = '';
+      document.getElementById('invite-email').value = '';
+      document.getElementById('m-invite-form').style.display = 'none';
+      renderVrienden();
+      toast('Uitnodiging verstuurd naar ' + naam);
+    } catch(err){
+      toast(err.uitleg || 'Uitnodigen lukte niet');
+    }
   }
 
-  /* ================= HORECA DATA & RENDER ================= */
-  let aanvragen = [
-    { id:1, functie:'Bediening', datum:'Za 16 aug', tijd:'17:00–01:00', gevraagd:3, gematcht:1, uurloon:'€13,00 – €14,50',
-      kandidaten:[ {naam:'Sanne de Vries', info:'2 jaar ervaring · Bediening, Bar', wens:'€13,50'}, {naam:'Milan Bakker', info:'1 jaar ervaring · Bar', wens:'€14,00'} ] },
-    { id:2, functie:'Keuken', datum:'Zo 17 aug', tijd:'12:00–18:00', gevraagd:2, gematcht:2, uurloon:'€13,50', kandidaten:[] },
-  ];
-  let nextReqId = 3;
+  /* ================= HORECA DATA & RENDER =================
+     Ook hier: geen demo-array meer, maar de echte aanvragen van dit bedrijf.
+     Het bedrijf-id is voorlopig instelbaar via ?bedrijf=2, tot er inlog is. */
 
-  function renderHoreca(){
-    const actief = aanvragen.filter(a => a.gematcht < a.gevraagd).length;
-    animateCount('h-stat-actief', actief, 500);
-    animateCount('h-stat-week', 5, 800);
-    animateCount('h-stat-uren', 142, 900, 'u');
-    animateCount('h-stat-matchtijd', 18, 900, 'u');
+  const BEDRIJF_ID = Number(
+    new URLSearchParams(window.location.search).get('bedrijf')
+    || window.WOSZ_BEDRIJF_ID || 1
+  );
+
+  let aanvragen = [];
+  let horecaStats = { actieveAanvragen:0, gematchtDezeWeek:0, urenDezeMaand:0, gemiddeldeMatchtijdMinuten:null };
+  let bedrijfsprofiel = { naam:'', tariefPerUur:2 };
+  let bedrijfsmedewerkers = [];
+  let bedrijfsfacturen = [];
+
+  async function renderHoreca(){
+    try {
+      neemHorecaData(await apiGet(`/api/horeca/${BEDRIJF_ID}`));
+    } catch(err){
+      console.error(err);
+      const melding = `<div class="empty"><b>Geen verbinding met de backend.</b><br>Draait de API op ${API_BASE}?</div>`;
+      ['h-aanvragen-list', 'h-dash-preview'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.innerHTML = melding;
+      });
+    }
+  }
+
+  function neemHorecaData(data){
+    aanvragen = data.aanvragen;
+    horecaStats = data.stats;
+    bedrijfsprofiel = data.profiel;
+    bedrijfsmedewerkers = data.medewerkers;
+    bedrijfsfacturen = data.facturen;
+    tekenHoreca();
+  }
+
+  function tekenHoreca(){
+    animateCount('h-stat-actief', horecaStats.actieveAanvragen, 500);
+    animateCount('h-stat-week', horecaStats.gematchtDezeWeek, 800);
+    animateCount('h-stat-uren', horecaStats.urenDezeMaand, 900, 'u');
+    document.getElementById('h-stat-matchtijd').textContent = matchtijdTekst(horecaStats.gemiddeldeMatchtijdMinuten);
     renderAanvragen();
     renderHDashPreview();
+    renderHMedewerkers();
+    renderHFacturen();
+    renderBedrijfsprofiel();
+  }
+
+  function renderHMedewerkers(){
+    const el = document.getElementById('h-medewerkers-body');
+    if(!el) return;
+    el.innerHTML = bedrijfsmedewerkers.length
+      ? bedrijfsmedewerkers.map(m => `<tr><td>${m.naam}</td><td>${m.functie}</td><td>${m.urenTotaal}u</td><td>${m.laatsteShift}</td><td>${m.contact}</td></tr>`).join('')
+      : `<tr><td colspan="5"><div class="empty">Nog niemand heeft via WOSZ voor je gewerkt.</div></td></tr>`;
+  }
+
+  const FACTUUR_BADGE = { concept:'open', open:'open', verstuurd:'open', betaald:'done' };
+
+  function renderHFacturen(){
+    const el = document.getElementById('h-facturen-body');
+    if(!el) return;
+    el.innerHTML = bedrijfsfacturen.length
+      ? bedrijfsfacturen.map(f => `<tr>
+          <td>${f.periode}</td>
+          <td>${f.uren}u</td>
+          <td>${euro(f.tariefPerUurEur)} / u</td>
+          <td>${euro(f.bedragEur)}</td>
+          <td><span class="badge ${FACTUUR_BADGE[f.status] || 'open'}">${f.status.charAt(0).toUpperCase() + f.status.slice(1)}</span></td>
+        </tr>`).join('')
+      : `<tr><td colspan="5"><div class="empty">Nog geen facturen. Die verschijnen zodra er uren zijn gewerkt.</div></td></tr>`;
+  }
+
+  function euro(bedrag){
+    return '€' + bedrag.toFixed(2).replace('.', ',');
+  }
+
+  function renderBedrijfsprofiel(){
+    document.querySelectorAll('#screen-horeca .sidebar-user .name, #p-h-dashboard .hcontent h1')
+      .forEach(el => { el.textContent = bedrijfsprofiel.naam; });
+
+    zetVeld('bprof-naam', bedrijfsprofiel.naam);
+    zetVeld('bprof-plaats', bedrijfsprofiel.plaats);
+    zetVeld('bprof-contact', bedrijfsprofiel.contactpersoon);
+    zetVeld('bprof-email', bedrijfsprofiel.email);
+    zetVeld('bprof-tarief', euro(bedrijfsprofiel.tariefPerUur) + ' per gewerkt uur');
+  }
+
+  async function bewaarBedrijfsprofiel(){
+    const naam = leesVeld('bprof-naam');
+    if(naam.length < 2){ toast('Vul een bedrijfsnaam in'); return; }
+    try {
+      neemHorecaData(await apiPost(`/api/horeca/${BEDRIJF_ID}/profiel`, {
+        naam,
+        plaats: leesVeld('bprof-plaats') || null,
+        contactpersoon: leesVeld('bprof-contact') || null,
+        email: leesVeld('bprof-email') || null,
+      }));
+      toast('Bedrijfsprofiel opgeslagen');
+    } catch(err){
+      toast(err.uitleg || 'Opslaan lukte niet');
+    }
+  }
+
+  /* De agent matcht meestal binnen een minuut. In uren afgerond zou daar altijd
+     "0u" staan, en dat leest als "geen gegevens" in plaats van als het beste
+     denkbare cijfer. */
+  function matchtijdTekst(minuten){
+    if(minuten === null || minuten === undefined) return '—';
+    if(minuten < 1) return '< 1m';
+    if(minuten < 60) return minuten + 'm';
+    return Math.round(minuten / 60) + 'u';
   }
 
   function aanvraagStatus(a){
@@ -1213,11 +1404,11 @@
 
   function aanvraagCardHtml(a){
     const st = aanvraagStatus(a);
-    const kandRows = a.kandidaten.length ? a.kandidaten.map((k,ki) => `
+    const kandRows = a.kandidaten.length ? a.kandidaten.map(k => `
       <div class="list-row">
         <div class="info"><b>${k.naam}</b><span>${k.info}${k.wens ? ' · wenst ' + k.wens + '/u' : ''}</span></div>
-        <button class="btn btn-coral btn-sm" onclick="accepteerKandidaat(${a.id}, ${ki})">Accepteren</button>
-      </div>`).join('') : `<div class="empty" style="padding:16px 0;">Nog geen reacties op deze aanvraag.</div>`;
+        <button class="btn btn-coral btn-sm" onclick="accepteerKandidaat(${a.id}, ${k.medewerkerId})">Accepteren</button>
+      </div>`).join('') : `<div class="empty" style="padding:16px 0;">Nog geen andere kandidaten beschikbaar voor deze aanvraag.</div>`;
 
     return `<div class="card">
       <div class="card-head">
@@ -1242,16 +1433,16 @@
     el.innerHTML = active.length ? active.map(aanvraagCardHtml).join('') : `<div class="empty">Geen openstaande personeelsvragen.</div>`;
   }
 
-  function accepteerKandidaat(reqId, kIdx){
-    const a = aanvragen.find(x => x.id === reqId);
-    if(!a) return;
-    const k = a.kandidaten[kIdx];
-    a.kandidaten.splice(kIdx,1);
-    a.gematcht++;
-    document.getElementById('h-stat-actief').textContent = aanvragen.filter(x => x.gematcht < x.gevraagd).length;
-    renderAanvragen();
-    renderHDashPreview();
-    toast(k.naam + ' toegevoegd aan de shift');
+  async function accepteerKandidaat(shiftId, medewerkerId){
+    const a = aanvragen.find(x => x.id === shiftId);
+    const k = a && a.kandidaten.find(x => x.medewerkerId === medewerkerId);
+    if(!k) return;
+    try {
+      neemHorecaData(await apiPost(`/api/horeca/${BEDRIJF_ID}/aanvragen/${shiftId}/kandidaten/${medewerkerId}`));
+      toast(k.naam + ' toegevoegd aan de shift');
+    } catch(err){
+      toast(err.uitleg || 'Accepteren lukte niet');
+    }
   }
 
   function toggleNewRequestForm(){
@@ -1259,36 +1450,41 @@
     f.style.display = f.style.display === 'none' ? 'block' : 'none';
   }
 
-  function submitRequest(){
-    const datum = document.getElementById('req-datum').value.trim() || 'Nog te bepalen';
-    const tijd = document.getElementById('req-tijd').value.trim() || 'Nog te bepalen';
+  /* Hier stond een setTimeout die na drie seconden een verzonnen kandidaat
+     toevoegde. Dat is nu een echte matchronde: de Matching-agent draait zodra
+     de aanvraag binnen is, dus het antwoord bevat al wie er is ingepland. */
+  async function submitRequest(){
+    const datum = document.getElementById('req-datum').value.trim();
+    const tijd = document.getElementById('req-tijd').value.trim();
     const functie = document.getElementById('req-functie').value;
     const aantal = parseInt(document.getElementById('req-aantal').value, 10) || 1;
-    const uurloon = document.getElementById('req-uurloon').value.trim() || 'Nog niet opgegeven';
+    const uurloon = document.getElementById('req-uurloon').value.trim();
 
-    const newReq = { id:nextReqId++, functie, datum, tijd, gevraagd:aantal, gematcht:0, uurloon, kandidaten:[] };
-    aanvragen.unshift(newReq);
+    if(!datum){ toast('Vul een datum in, bijvoorbeeld: Za 23 aug'); return; }
+    if(!tijd){ toast('Vul een tijd in, bijvoorbeeld: 17:00–01:00'); return; }
+
+    let data;
+    try {
+      data = await apiPost(`/api/horeca/${BEDRIJF_ID}/aanvragen`, {
+        functie, datum, tijd, aantal, uurloon: uurloon || null,
+      });
+    } catch(err){
+      toast(err.uitleg || 'Aanvraag plaatsen lukte niet');
+      return;
+    }
+
     document.getElementById('req-datum').value = '';
     document.getElementById('req-tijd').value = '';
     document.getElementById('req-aantal').value = '';
     document.getElementById('req-uurloon').value = '';
     document.getElementById('h-new-request-form').style.display = 'none';
 
-    renderAanvragen();
-    renderHDashPreview();
-    document.getElementById('h-stat-actief').textContent = aanvragen.filter(x => x.gematcht < x.gevraagd).length;
-    toast('Personeelsvraag geplaatst');
-
-    // simuleer een eerste reactie na een paar seconden
-    setTimeout(() => {
-      const still = aanvragen.find(x => x.id === newReq.id);
-      if(still && still.gematcht < still.gevraagd){
-        still.kandidaten.push({ naam:'Femke Jansen', info:'1,5 jaar ervaring · ' + functie, wens:'€13,75' });
-        renderAanvragen();
-        renderHDashPreview();
-        toast('Nieuwe reactie op je aanvraag: Femke Jansen');
-      }
-    }, 3500);
+    const vorige = aanvragen.map(a => a.id);
+    neemHorecaData(data);
+    const nieuw = aanvragen.find(a => !vorige.includes(a.id));
+    toast(nieuw && nieuw.gematcht > 0
+      ? `Aanvraag geplaatst — ${nieuw.gematcht} van de ${nieuw.gevraagd} plekken meteen gevuld`
+      : 'Personeelsvraag geplaatst — we zoeken mensen voor je');
   }
 
   /* ================= WOSZ DIRECTIE ================= */
@@ -1301,7 +1497,7 @@
 
   async function apiGet(pad){
     const res = await fetch(`${API_BASE}${pad}`);
-    if(!res.ok) throw new Error(`GET ${pad} → ${res.status}`);
+    if(!res.ok) throw await apiFout('GET', pad, res);
     return res.json();
   }
   async function apiPost(pad, body){
@@ -1310,8 +1506,24 @@
       headers:{ 'Content-Type':'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    if(!res.ok) throw new Error(`POST ${pad} → ${res.status}`);
+    if(!res.ok) throw await apiFout('POST', pad, res);
     return res.json();
+  }
+
+  /* De backend legt in 'detail' uit waaróm iets niet mag ("Deze shift is niet
+     meer open"). Zonder die tekst zou de gebruiker alleen een statuscode zien,
+     en die zegt hem niets. */
+  async function apiFout(methode, pad, res){
+    let uitleg = '';
+    try {
+      const data = await res.json();
+      if(typeof data.detail === 'string') uitleg = data.detail;
+      else if(Array.isArray(data.detail) && data.detail.length) uitleg = data.detail[0].msg || '';
+    } catch(e){ /* geen JSON-body: dan blijft het bij de statuscode */ }
+    const fout = new Error(uitleg || `${methode} ${pad} → ${res.status}`);
+    fout.uitleg = uitleg;
+    fout.status = res.status;
+    return fout;
   }
 
   let dailyReport = { datum:'—', secties:[], voortgang:[], aandacht:[] };
@@ -1327,7 +1539,7 @@
     financieel: ['Matching-agent — gewerkte uren', 'Directie — goedkeuring uitbetaling'],
   };
 
-  let directieInterval = null;
+  let verversInterval = null;
 
   function fmtVal(v, isEuro){ return isEuro ? '€' + v.toLocaleString('nl-NL') : v.toLocaleString('nl-NL'); }
 
@@ -1389,7 +1601,6 @@
     const gelukt = await laadDirectieData();
     tekenDirectie();
     if(!gelukt) toonVerbindingsfout(true);
-    startDirectieVerversing();
   }
 
   function renderCollabChips(){
@@ -1412,21 +1623,40 @@
     });
   }
 
-  /* Vervangt de vroegere simulatie: haalt periodiek echte data op zolang het
-     directiescherm actief is. Interval bewust ruim — de agents werken in
-     minuten, niet in seconden. */
-  const DIRECTIE_VERVERS_MS = 15000;
+  /* Vervangt de vroegere simulatie: haalt periodiek echte data op voor het
+     scherm dat openstaat. De agents draaien door terwijl je kijkt — een shift
+     die intussen gevuld raakt of een beslissing die binnenkomt, verschijnt dus
+     vanzelf. Interval bewust ruim: de agents werken in minuten, niet seconden. */
+  const VERVERS_MS = 15000;
 
-  function startDirectieVerversing(){
-    if(directieInterval) return; // al actief
-    directieInterval = setInterval(async () => {
-      if(!document.getElementById('screen-directie').classList.contains('active')) return;
-      if(await laadDirectieData()) tekenDirectie();
-    }, DIRECTIE_VERVERS_MS);
+  function startVerversing(){
+    if(verversInterval) return; // al actief
+    verversInterval = setInterval(ververs, VERVERS_MS);
   }
 
-  function stopDirectieVerversing(){
-    if(directieInterval){ clearInterval(directieInterval); directieInterval = null; }
+  async function ververs(){
+    if(document.hidden) return; // geen verkeer als het tabblad op de achtergrond staat
+    try {
+      if(actiefScherm('directie')){
+        if(await laadDirectieData()) tekenDirectie();
+      } else if(actiefScherm('medewerker')){
+        neemMedewerkerData(await apiGet(`/api/medewerker/${MEDEWERKER_ID}`));
+      } else if(actiefScherm('horeca')){
+        neemHorecaData(await apiGet(`/api/horeca/${BEDRIJF_ID}`));
+      }
+    } catch(err){
+      // Een mislukte verversing is geen ramp: de volgende ronde probeert het
+      // opnieuw. Het scherm blijft ondertussen staan zoals het stond.
+      console.error(err);
+    }
+  }
+
+  function actiefScherm(rol){
+    return document.getElementById('screen-' + rol).classList.contains('active');
+  }
+
+  function stopVerversing(){
+    if(verversInterval){ clearInterval(verversInterval); verversInterval = null; }
   }
 
   function renderUrgentBanner(){

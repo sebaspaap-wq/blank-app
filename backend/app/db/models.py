@@ -71,6 +71,7 @@ class User(Base):
     # Uitbreiding: wat een bedrijf van een kandidaat te zien krijgt.
     ervaring_jaren: Mapped[float] = mapped_column(Float, default=0.0)
     gewenst_uurloon: Mapped[str | None] = mapped_column(String(40))
+    woonplaats: Mapped[str | None] = mapped_column(String(120))
 
     # Uitbreiding: welk bedrijf hoort bij een horeca-account.
     bedrijf_id: Mapped[int | None] = mapped_column(ForeignKey("bedrijven.id"))

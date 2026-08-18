@@ -17,8 +17,9 @@ from sqlalchemy import select
 
 from app.api import horeca as horeca_api
 from app.api import medewerker as medewerker_api
+from app.agents.matching import MatchingAgent
 from app.core.domein import MatchStatus, ReactieStatus
-from app.db.models import Bericht, Match, Reactie, Referral, Shift, User
+from app.db.models import Bericht, Factuur, Match, Reactie, Referral, Shift, User
 from app.db.session import get_sessie
 from tests.conftest import maak_medewerker, maak_shift
 
@@ -501,3 +502,139 @@ async def test_een_niet_medewerker_krijgt_geen_medewerkerscherm(client, sessie, 
     await sessie.flush()
 
     assert (await client.get(f"/api/medewerker/{gebruiker.id}")).status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Profielen en overzichten
+# ---------------------------------------------------------------------------
+
+
+async def test_profiel_opslaan_verandert_wie_de_agent_kan_kiezen(
+    client, sessie, bedrijf, zaterdag
+):
+    """Functies en dagen zijn geen cosmetica maar harde matchcriteria."""
+    medewerker = await maak_medewerker(
+        sessie, "Sanne", functies=["bediening"], dagen=["za"]
+    )
+    shift = await maak_shift(sessie, bedrijf, datum=zaterdag, functie="bediening")
+
+    voor = await client.get(f"/api/medewerker/{medewerker.id}/shifts/beschikbaar")
+    assert len(voor.json()) == 1
+
+    antwoord = await client.post(
+        f"/api/medewerker/{medewerker.id}/profiel",
+        json={
+            "naam": "Sanne de Vries",
+            "woonplaats": "Zandvoort",
+            "gewenst_uurloon": "€14,00",
+            "functies": ["keuken"],
+            "beschikbare_dagen": ["za"],
+        },
+    )
+    assert antwoord.status_code == 200
+    profiel = antwoord.json()["profiel"]
+    assert profiel["woonplaats"] == "Zandvoort"
+    assert profiel["gewenstUurloon"] == "€14,00"
+    assert profiel["functies"] == ["keuken"]
+
+    na = await client.get(f"/api/medewerker/{medewerker.id}/shifts/beschikbaar")
+    assert na.json() == []
+
+    kandidaten = await MatchingAgent().kandidaten_voor(sessie, shift)
+    assert kandidaten == []
+
+
+async def test_profiel_met_een_onbekende_dag_wordt_geweigerd(client, sessie):
+    medewerker = await maak_medewerker(sessie, "Sanne", functies=["bar"], dagen=["za"])
+    antwoord = await client.post(
+        f"/api/medewerker/{medewerker.id}/profiel",
+        json={"naam": "Sanne", "functies": ["bar"], "beschikbare_dagen": ["zaterdag"]},
+    )
+    assert antwoord.status_code == 422
+
+
+async def test_medewerkerstabel_toont_alleen_gewerkte_shifts(
+    client, sessie, bedrijf, zaterdag
+):
+    """Een geplande shift is nog geen werkervaring, een no-show al helemaal niet."""
+    gewerkt = await maak_medewerker(sessie, "Sanne", functies=["bediening"], dagen=["za"])
+    gewerkt.email = "sanne@voorbeeld.nl"
+    afwezig = await maak_medewerker(sessie, "Milan", functies=["bar"], dagen=["za"])
+    gepland = await maak_medewerker(sessie, "Noor", functies=["keuken"], dagen=["za"])
+
+    verleden = await maak_shift(
+        sessie, bedrijf, datum=date.today() - timedelta(days=7), functie="bediening"
+    )
+    toekomst = await maak_shift(sessie, bedrijf, datum=zaterdag, functie="keuken")
+    sessie.add_all(
+        [
+            Match(
+                shift_id=verleden.id,
+                medewerker_id=gewerkt.id,
+                status=str(MatchStatus.GEWERKT),
+                uren_gewerkt=6.0,
+            ),
+            Match(
+                shift_id=verleden.id,
+                medewerker_id=afwezig.id,
+                status=str(MatchStatus.NO_SHOW),
+            ),
+            Match(
+                shift_id=toekomst.id,
+                medewerker_id=gepland.id,
+                status=str(MatchStatus.BEVESTIGD),
+            ),
+        ]
+    )
+    await sessie.flush()
+
+    medewerkers = (await client.get(f"/api/horeca/{bedrijf.id}")).json()["medewerkers"]
+    assert [m["naam"] for m in medewerkers] == ["Sanne"]
+    assert medewerkers[0]["urenTotaal"] == 6.0
+    assert medewerkers[0]["functie"] == "Bediening"
+    assert medewerkers[0]["contact"] == "sanne@voorbeeld.nl"
+
+
+async def test_bedrijfsprofiel_opslaan_maakt_een_contactpersoon_aan(
+    client, sessie, bedrijf
+):
+    antwoord = await client.post(
+        f"/api/horeca/{bedrijf.id}/profiel",
+        json={
+            "naam": "Strandtent Zuid",
+            "plaats": "Zandvoort aan Zee",
+            "contactpersoon": "Ruben Postma",
+            "email": "ruben@strandtentzuid.nl",
+        },
+    )
+    assert antwoord.status_code == 200
+    profiel = antwoord.json()["profiel"]
+    assert profiel["plaats"] == "Zandvoort aan Zee"
+    assert profiel["contactpersoon"] == "Ruben Postma"
+
+    contact = await sessie.get(User, bedrijf.contact_user_id)
+    assert contact is not None
+    assert contact.rol == "horeca"
+    assert contact.bedrijf_id == bedrijf.id
+
+
+async def test_facturen_van_het_bedrijf_komen_uit_de_administratie(
+    client, sessie, bedrijf
+):
+    sessie.add(
+        Factuur(
+            bedrijf_id=bedrijf.id,
+            periode="2026-08",
+            uren=142.0,
+            bedrag_cent=28400,
+            status="open",
+        )
+    )
+    await sessie.flush()
+
+    facturen = (await client.get(f"/api/horeca/{bedrijf.id}")).json()["facturen"]
+    assert len(facturen) == 1
+    assert facturen[0]["periode"] == "augustus 2026"
+    assert facturen[0]["uren"] == 142.0
+    assert facturen[0]["bedragEur"] == 284.0
+    assert facturen[0]["tariefPerUurEur"] == 2.0

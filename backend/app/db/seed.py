@@ -30,14 +30,14 @@ from app.db.models import (
 )
 from app.db.session import maak_tabellen, sessie
 
-# (naam, functies, beschikbare dagen, seizoensuren, ervaringsjaren, uurloonwens)
+# (naam, e-mail, functies, beschikbare dagen, seizoensuren, ervaringsjaren, uurloonwens)
 MEDEWERKERS = [
-    ("Sanne de Vries", ["bediening", "bar"], ["do", "vr", "za", "zo"], 74.0, 2.0, "€13,50"),
-    ("Milan Bakker", ["bar", "bediening"], ["vr", "za", "zo"], 61.0, 1.0, "€14,00"),
-    ("Tom Hendriks", ["bediening"], ["za", "zo"], 32.0, 0.5, "€13,00"),
-    ("Lisa Mulder", ["keuken"], ["ma", "di", "wo", "do", "vr"], 50.0, 3.0, "€14,50"),
-    ("Noor Jansen", ["bediening", "host / runner"], ["za", "zo", "ma"], 18.0, 0.0, "€12,50"),
-    ("Daan Visser", ["keuken", "bediening"], ["wo", "do", "vr", "za"], 61.0, 4.0, "€15,00"),
+    ("Sanne de Vries", "sanne@voorbeeld.nl", ["bediening", "bar"], ["do", "vr", "za", "zo"], 74.0, 2.0, "€13,50"),
+    ("Milan Bakker", "milan@voorbeeld.nl", ["bar", "bediening"], ["vr", "za", "zo"], 61.0, 1.0, "€14,00"),
+    ("Tom Hendriks", "tom@voorbeeld.nl", ["bediening"], ["za", "zo"], 32.0, 0.5, "€13,00"),
+    ("Lisa Mulder", "lisa@voorbeeld.nl", ["keuken"], ["ma", "di", "wo", "do", "vr"], 50.0, 3.0, "€14,50"),
+    ("Noor Jansen", "noor@voorbeeld.nl", ["bediening", "host / runner"], ["za", "zo", "ma"], 18.0, 0.0, "€12,50"),
+    ("Daan Visser", "daan@voorbeeld.nl", ["keuken", "bediening"], ["wo", "do", "vr", "za"], 61.0, 4.0, "€15,00"),
 ]
 
 BEDRIJVEN = [
@@ -197,10 +197,12 @@ async def seed(s: AsyncSession) -> None:
     s.add(User(naam="Sebas", rol="directie", email="sebas@wosz.nl"))
 
     medewerkers: list[User] = []
-    for naam, functies, dagen, _uren, ervaring, wens in MEDEWERKERS:
+    for naam, mail, functies, dagen, _uren, ervaring, wens in MEDEWERKERS:
         gebruiker = User(
             naam=naam,
             rol="medewerker",
+            email=mail,
+            woonplaats="Zandvoort",
             functies=functies,
             beschikbare_dagen=dagen,
             ervaring_jaren=ervaring,
@@ -210,7 +212,7 @@ async def seed(s: AsyncSession) -> None:
         medewerkers.append(gebruiker)
     await s.flush()
 
-    for gebruiker, (_, _, _, uren, _e, _w) in zip(medewerkers, MEDEWERKERS, strict=True):
+    for gebruiker, (_, _, _, _, uren, _e, _w) in zip(medewerkers, MEDEWERKERS, strict=True):
         from app.core.domein import level_voor_uren
 
         s.add(
@@ -266,8 +268,13 @@ async def seed(s: AsyncSession) -> None:
             )
         )
 
-    # Een afgeronde shift van vorige week, zodat het medewerkerscherm ook
+    # Een gewerkte shift van vorige week, zodat het medewerkerscherm
     # geschiedenis heeft en het horecascherm gewerkte uren kan tonen.
+    #
+    # De match staat bewust op 'bevestigd' en niet op 'gewerkt': ``app.db.demo``
+    # boekt de uren daarna via de Matching-agent. Zo doorloopt de demodata
+    # dezelfde weg als echte data — inclusief het event naar Financieel, dat het
+    # factuurconcept voor dit bedrijf aanmaakt.
     vorige_zaterdag = zaterdag - timedelta(days=7)
     afgerond = Shift(
         bedrijf_id=bedrijven[0].id,
@@ -285,8 +292,7 @@ async def seed(s: AsyncSession) -> None:
         Match(
             shift_id=afgerond.id,
             medewerker_id=medewerkers[0].id,
-            status=str(MatchStatus.GEWERKT),
-            uren_gewerkt=6.0,
+            status=str(MatchStatus.BEVESTIGD),
             onderbouwing="Hoogste levelprioriteit en ervaring met bediening.",
         )
     )

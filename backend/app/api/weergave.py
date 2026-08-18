@@ -141,6 +141,20 @@ def _maandnummer(tekst: str) -> int | None:
     return None
 
 
+def periode_tekst(periode: str) -> str:
+    """Zet "2026-08" om in "augustus 2026".
+
+    Facturen worden per maand opgebouwd en de periode staat als sorteerbare
+    tekst in de database. Voor een factuuroverzicht is dat onleesbaar.
+    """
+    delen = periode.split("-")
+    if len(delen) == 2 and delen[0].isdigit() and delen[1].isdigit():
+        maand = int(delen[1])
+        if 1 <= maand <= 12:
+            return f"{MAAND_NAMEN[maand - 1]} {delen[0]}"
+    return periode
+
+
 def uurloon_tekst(waarde: str | None) -> str:
     """Wat er onder een shift staat als het uurloon niet is ingevuld."""
     return waarde or "Nog niet opgegeven"

@@ -33,6 +33,8 @@ from app.api.schemas import (
     MedewerkerUit,
     MijnShiftsUit,
     MijnShiftUit,
+    ProfielIn,
+    ProfielUit,
     ShiftUit,
     UrenIn,
     VriendIn,
@@ -308,6 +310,36 @@ async def geef_uren_door(
     return resultaat
 
 
+@router.post("/{medewerker_id}/profiel", response_model=MedewerkerUit)
+async def bewaar_profiel(
+    medewerker_id: int, invoer: ProfielIn, sessie: AsyncSession = Depends(get_sessie)
+) -> MedewerkerUit:
+    """Werk het eigen profiel bij.
+
+    Functies en beschikbare dagen zijn geen cosmetica: de Matching-agent
+    gebruikt ze als harde criteria. Wie hier een functie uitvinkt, verdwijnt
+    daarmee uit de kandidatenlijst voor dat soort shifts.
+    """
+    gebruiker = await _haal_medewerker(sessie, medewerker_id)
+
+    onbekende_dagen = {d.lower() for d in invoer.beschikbare_dagen} - set(DAGEN)
+    if onbekende_dagen:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Onbekende dag(en): {', '.join(sorted(onbekende_dagen))}",
+        )
+
+    gebruiker.naam = invoer.naam.strip()
+    gebruiker.email = invoer.email or None
+    gebruiker.telefoon = invoer.telefoon or None
+    gebruiker.woonplaats = invoer.woonplaats or None
+    gebruiker.gewenst_uurloon = invoer.gewenst_uurloon or None
+    gebruiker.functies = [f.lower() for f in invoer.functies]
+    gebruiker.beschikbare_dagen = [d.lower() for d in invoer.beschikbare_dagen]
+    await sessie.commit()
+    return await _scherm(sessie, gebruiker)
+
+
 @router.post("/{medewerker_id}/vrienden", response_model=list[VriendUit], status_code=201)
 async def nodig_vriend_uit(
     medewerker_id: int, invoer: VriendIn, sessie: AsyncSession = Depends(get_sessie)
@@ -358,10 +390,23 @@ async def _scherm(sessie: AsyncSession, gebruiker: User) -> MedewerkerUit:
         id=gebruiker.id,
         naam=gebruiker.naam,
         seizoen_uren=level.seizoen_uren if level else 0.0,
+        profiel=_profiel(gebruiker),
         beschikbaar=await _beschikbare_shifts(sessie, gebruiker),
         aankomend=aankomend,
         geschiedenis=geschiedenis,
         vrienden=await _vrienden(sessie, gebruiker),
+    )
+
+
+def _profiel(gebruiker: User) -> ProfielUit:
+    return ProfielUit(
+        naam=gebruiker.naam,
+        email=gebruiker.email,
+        telefoon=gebruiker.telefoon,
+        woonplaats=gebruiker.woonplaats,
+        gewenst_uurloon=gebruiker.gewenst_uurloon,
+        functies=list(gebruiker.functies or []),
+        beschikbare_dagen=list(gebruiker.beschikbare_dagen or []),
     )
 
 

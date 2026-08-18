@@ -390,6 +390,34 @@ class VriendUit(BaseModel):
     status: str
 
 
+class ProfielUit(BaseModel):
+    """De velden op 'Mijn profiel'."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    naam: str
+    email: str | None = None
+    telefoon: str | None = None
+    woonplaats: str | None = None
+    gewenst_uurloon: str | None = Field(default=None, serialization_alias="gewenstUurloon")
+    functies: list[str] = Field(default_factory=list)
+    beschikbare_dagen: list[str] = Field(
+        default_factory=list, serialization_alias="beschikbareDagen"
+    )
+
+
+class ProfielIn(BaseModel):
+    """Body van ``POST /api/medewerker/{id}/profiel``."""
+
+    naam: str = Field(min_length=2, max_length=120)
+    email: str | None = Field(default=None, max_length=200)
+    telefoon: str | None = Field(default=None, max_length=40)
+    woonplaats: str | None = Field(default=None, max_length=120)
+    gewenst_uurloon: str | None = Field(default=None, max_length=40)
+    functies: list[str] = Field(default_factory=list)
+    beschikbare_dagen: list[str] = Field(default_factory=list)
+
+
 class MedewerkerUit(BaseModel):
     """Alles wat het medewerkerscherm in één keer nodig heeft."""
 
@@ -398,6 +426,7 @@ class MedewerkerUit(BaseModel):
     id: int
     naam: str
     seizoen_uren: float = Field(serialization_alias="seizoenUren")
+    profiel: ProfielUit
     beschikbaar: list[ShiftUit]
     aankomend: list[MijnShiftUit]
     geschiedenis: list[MijnShiftUit]
@@ -470,6 +499,58 @@ class HorecaStatsUit(BaseModel):
     )
 
 
+class BedrijfsprofielUit(BaseModel):
+    """De velden op 'Bedrijfsprofiel'."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    naam: str
+    plaats: str | None = None
+    contactpersoon: str | None = None
+    email: str | None = None
+    #: Wat WOSZ per gewerkt uur rekent. Alleen ter informatie: het tarief
+    #: wijzigen is geen actie die een bedrijf zelf uitvoert.
+    tarief_per_uur: float = Field(serialization_alias="tariefPerUur")
+
+
+class BedrijfsprofielIn(BaseModel):
+    """Body van ``POST /api/horeca/{id}/profiel``.
+
+    ``tarief_per_uur`` staat er bewust niet in: dat is een afspraak tussen WOSZ
+    en het bedrijf, geen veld dat het bedrijf zelf kan wijzigen.
+    """
+
+    naam: str = Field(min_length=2, max_length=120)
+    plaats: str | None = Field(default=None, max_length=120)
+    contactpersoon: str | None = Field(default=None, max_length=120)
+    email: str | None = Field(default=None, max_length=200)
+
+
+class HorecamedewerkerUit(BaseModel):
+    """Een regel in de medewerkerstabel van het horecascherm."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    naam: str
+    functie: str
+    uren_totaal: float = Field(serialization_alias="urenTotaal")
+    laatste_shift: str = Field(serialization_alias="laatsteShift")
+    contact: str
+
+
+class HorecafactuurUit(BaseModel):
+    """Een regel in de facturentabel van het horecascherm."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: int
+    periode: str
+    uren: float
+    tarief_per_uur_eur: float = Field(serialization_alias="tariefPerUurEur")
+    bedrag_eur: float = Field(serialization_alias="bedragEur")
+    status: str
+
+
 class HorecaUit(BaseModel):
     """Alles wat het horecascherm in één keer nodig heeft."""
 
@@ -477,8 +558,11 @@ class HorecaUit(BaseModel):
 
     bedrijf_id: int = Field(serialization_alias="bedrijfId")
     bedrijf: str
+    profiel: BedrijfsprofielUit
     stats: HorecaStatsUit
     aanvragen: list[AanvraagUit]
+    medewerkers: list[HorecamedewerkerUit]
+    facturen: list[HorecafactuurUit]
 
 
 class AanvraagIn(BaseModel):
@@ -506,6 +590,8 @@ __all__ = [
     "AanvraagIn",
     "AanvraagUit",
     "ActiviteitUit",
+    "BedrijfsprofielIn",
+    "BedrijfsprofielUit",
     "BerichtUit",
     "BeslissingUit",
     "BudgetmutatieUit",
@@ -520,6 +606,8 @@ __all__ = [
     "FactuurUit",
     "HorecaStatsUit",
     "HorecaUit",
+    "HorecafactuurUit",
+    "HorecamedewerkerUit",
     "KandidaatUit",
     "KeuzeIn",
     "MedewerkerUit",
@@ -528,6 +616,8 @@ __all__ = [
     "NieuweHoekIn",
     "OnboardingIn",
     "OptieUit",
+    "ProfielIn",
+    "ProfielUit",
     "ResultaatIn",
     "ShiftUit",
     "SjabloonUit",

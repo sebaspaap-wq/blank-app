@@ -25,15 +25,26 @@ from app.agents.matching import MatchingAgent
 from app.api.schemas import (
     AanvraagIn,
     AanvraagUit,
+    BedrijfsprofielIn,
+    BedrijfsprofielUit,
+    HorecafactuurUit,
+    HorecamedewerkerUit,
     HorecaStatsUit,
     HorecaUit,
     KandidaatUit,
 )
-from app.api.weergave import DatumFout, kandidaat_info, korte_datum, lees_datum, uurloon_tekst
+from app.api.weergave import (
+    DatumFout,
+    kandidaat_info,
+    korte_datum,
+    lees_datum,
+    periode_tekst,
+    uurloon_tekst,
+)
 from app.config import get_settings
 from app.core.domein import MatchStatus, ShiftStatus, als_aware, level_voor_uren
 from app.core.events import verwerk_pending
-from app.db.models import Bedrijf, Level, Match, Reactie, Shift, User
+from app.db.models import Bedrijf, Factuur, Level, Match, Reactie, Shift, User
 from app.db.session import get_sessie
 
 router = APIRouter(prefix="/api/horeca", tags=["horeca"])
@@ -169,6 +180,41 @@ async def accepteer_kandidaat(
     return await _scherm(sessie, bedrijf)
 
 
+@router.post("/{bedrijf_id}/profiel", response_model=HorecaUit)
+async def bewaar_profiel(
+    bedrijf_id: int, invoer: BedrijfsprofielIn, sessie: AsyncSession = Depends(get_sessie)
+) -> HorecaUit:
+    """Werk het bedrijfsprofiel bij.
+
+    De contactpersoon staat als gebruiker in het systeem en niet als tekstveld
+    op het bedrijf — dat is dezelfde persoon die inlogt. Bestaat hij nog niet,
+    dan wordt hij hier aangemaakt.
+    """
+    bedrijf = await _haal_bedrijf(sessie, bedrijf_id)
+
+    bedrijf.naam = invoer.naam.strip()
+    bedrijf.plaats = invoer.plaats or None
+
+    if invoer.contactpersoon or invoer.email:
+        contact = (
+            await sessie.get(User, bedrijf.contact_user_id)
+            if bedrijf.contact_user_id
+            else None
+        )
+        if contact is None:
+            contact = User(naam=invoer.contactpersoon or bedrijf.naam, rol="horeca")
+            sessie.add(contact)
+            await sessie.flush()
+            bedrijf.contact_user_id = contact.id
+        if invoer.contactpersoon:
+            contact.naam = invoer.contactpersoon.strip()
+        contact.email = invoer.email or None
+        contact.bedrijf_id = bedrijf.id
+
+    await sessie.commit()
+    return await _scherm(sessie, bedrijf)
+
+
 def _duur_uit_tijd(tijd: str) -> float:
     """Leid de shiftduur af uit "17:00-01:00".
 
@@ -202,9 +248,94 @@ async def _scherm(sessie: AsyncSession, bedrijf: Bedrijf) -> HorecaUit:
     return HorecaUit(
         bedrijf_id=bedrijf.id,
         bedrijf=bedrijf.naam,
+        profiel=await _profiel(sessie, bedrijf),
         stats=await _stats(sessie, bedrijf, aanvragen),
         aanvragen=aanvragen,
+        medewerkers=await _medewerkers(sessie, bedrijf),
+        facturen=await _facturen(sessie, bedrijf),
     )
+
+
+async def _profiel(sessie: AsyncSession, bedrijf: Bedrijf) -> BedrijfsprofielUit:
+    contact = (
+        await sessie.get(User, bedrijf.contact_user_id)
+        if bedrijf.contact_user_id
+        else None
+    )
+    return BedrijfsprofielUit(
+        naam=bedrijf.naam,
+        plaats=bedrijf.plaats,
+        contactpersoon=contact.naam if contact else None,
+        email=contact.email if contact else None,
+        tarief_per_uur=bedrijf.tarief_per_uur,
+    )
+
+
+async def _medewerkers(
+    sessie: AsyncSession, bedrijf: Bedrijf
+) -> list[HorecamedewerkerUit]:
+    """Iedereen die via WOSZ voor dit bedrijf heeft gewerkt.
+
+    Alleen daadwerkelijk gewerkte shifts tellen. Een geplande shift zegt nog
+    niets, en een no-show hoort hier niet als werkervaring te verschijnen.
+    """
+    resultaat = await sessie.execute(
+        select(Match, Shift)
+        .join(Shift, Shift.id == Match.shift_id)
+        .where(
+            Shift.bedrijf_id == bedrijf.id,
+            Match.status == str(MatchStatus.GEWERKT),
+        )
+    )
+
+    per_persoon: dict[int, dict] = {}
+    for match, shift in resultaat.all():
+        regel = per_persoon.setdefault(
+            match.medewerker_id,
+            {"uren": 0.0, "laatste": shift.datum, "functies": {}},
+        )
+        regel["uren"] += match.uren_gewerkt or 0.0
+        regel["laatste"] = max(regel["laatste"], shift.datum)
+        regel["functies"][shift.functie] = regel["functies"].get(shift.functie, 0) + 1
+
+    uit: list[HorecamedewerkerUit] = []
+    for medewerker_id, regel in per_persoon.items():
+        persoon = await sessie.get(User, medewerker_id)
+        if persoon is None:
+            continue
+        # De functie waarin iemand hier het vaakst heeft gewerkt — dat is wat
+        # het bedrijf van hem kent, niet wat er verder in zijn profiel staat.
+        vaakst = max(regel["functies"].items(), key=lambda p: p[1])[0]
+        uit.append(
+            HorecamedewerkerUit(
+                naam=persoon.naam,
+                functie=vaakst.capitalize(),
+                uren_totaal=round(regel["uren"], 1),
+                laatste_shift=korte_datum(regel["laatste"]),
+                contact=persoon.email or persoon.telefoon or "—",
+            )
+        )
+    uit.sort(key=lambda m: -m.uren_totaal)
+    return uit
+
+
+async def _facturen(sessie: AsyncSession, bedrijf: Bedrijf) -> list[HorecafactuurUit]:
+    resultaat = await sessie.execute(
+        select(Factuur)
+        .where(Factuur.bedrijf_id == bedrijf.id)
+        .order_by(Factuur.periode.desc(), Factuur.id.desc())
+    )
+    return [
+        HorecafactuurUit(
+            id=f.id,
+            periode=periode_tekst(f.periode),
+            uren=round(f.uren, 1),
+            tarief_per_uur_eur=bedrijf.tarief_per_uur,
+            bedrag_eur=f.bedrag_cent / 100,
+            status=f.status,
+        )
+        for f in resultaat.scalars().all()
+    ]
 
 
 async def _aanvragen(sessie: AsyncSession, bedrijf: Bedrijf) -> list[AanvraagUit]:
