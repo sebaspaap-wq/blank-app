@@ -12,6 +12,16 @@ photography, editorial typography, and motion that stays quiet.
 - **Framer Motion** for the overlays (menu, search, bag) and page transitions
 - **next/image** with AVIF/WebP, blur placeholders and priority hints
 
+## One-click page
+
+`standalone/` builds the whole storefront as a single self-contained HTML file —
+every photograph and both typefaces inlined, no external requests — for hosting
+or sharing as one link:
+
+```bash
+node standalone/build.mjs            # → standalone/cava.html (~757 kB)
+```
+
 ## Running it
 
 ```bash
@@ -59,7 +69,9 @@ body copy at wide tracking. Every transition uses
 ## Motion
 
 One `IntersectionObserver` in `RevealProvider` drives every scroll reveal on the
-site, so server components only need a `data-reveal` attribute. Parallax runs on
+site, so server components only need a `data-reveal` attribute. A rAF-throttled
+sweep backs it up: a fast flick can carry an element clean past the viewport
+between two frames, and the observer then never reports a state change at all. Parallax runs on
 a single rAF loop per section and only while the section is on screen. The custom
 cursor is disabled on coarse pointers, and `prefers-reduced-motion` short-circuits
 reveals, parallax, the cursor and every overlay animation.
@@ -73,6 +85,8 @@ reveals, parallax, the cursor and every overlay animation.
 
 ## Photography
 
-Campaign images live in `public/images` as WebP (~90–145 kB each), resized to
-1600px and paired with 16px blur placeholders so nothing shifts on load. The hero
-frame loads with priority; everything below the fold is lazy.
+Six campaign frames live in `public/images` as WebP (~90–150 kB each), paired
+with 16px blur placeholders so nothing shifts on load. Each colourway has two
+looks — a closed studio-quiet frame and an open poolside frame — which is what
+the product pages show. The hero loads with priority; everything below the fold
+is lazy.

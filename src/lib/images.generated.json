@@ -1,0 +1,58 @@
+{
+  "cava-cacao-pool": {
+    "src": "/images/cava-cacao-pool.webp",
+    "width": 1023,
+    "height": 1537,
+    "blurDataURL": "data:image/webp;base64,UklGRpYAAABXRUJQVlA4IIoAAAAwBACdASoQABgAPu1iqU2ppaOiMAgBMB2JQBOmUABYLwrg2GonGnbn9AAA/I/onVLRC+XMyrtrAdZD8ujMcJCXmsWDQXc8pqVGkwOKqzh6FUo0mx6K6WJbUn0/r325miM+QG7/3T/9zrdKaYsRiuiCu9p7OSjsEDOKpGcgiKd67+r1hk3/o4xrgAA=",
+    "orig": [
+      1023,
+      1537
+    ],
+    "bytes": 144670
+  },
+  "cava-sand-terrace": {
+    "src": "/images/cava-sand-terrace.webp",
+    "width": 1122,
+    "height": 1402,
+    "blurDataURL": "data:image/webp;base64,UklGRngAAABXRUJQVlA4IGwAAABQBACdASoQABQAPu1iqU2ppaQiMAgBMB2JYwCdMoJX+AlJnVqUT9q6GzxYAP6/OBAtqv59A4qjY1IQzT8mKU8BQLOYzFTgyRQRbROcq1em9Izr5I28t1kiewSfAGYUmSJ0ddSsCdVEQWogAAA=",
+    "orig": [
+      1122,
+      1402
+    ],
+    "bytes": 127984
+  },
+  "cava-ivory-interior": {
+    "src": "/images/cava-ivory-interior.webp",
+    "width": 1023,
+    "height": 1537,
+    "blurDataURL": "data:image/webp;base64,UklGRoAAAABXRUJQVlA4IHQAAABQBACdASoQABgAPu1mq04ppaQiMAgBMB2JYwCdMoACbnwVe3L3HXqFLqVgAP5xrXwTtDOu4fX6vu0LWGeRTCRw04RI1qmX+cbUboaygIl5WlB4V+RPiaKDW9PbuQ6sZ+NU+71d8PkQgF1RTD5uaxWbAEgAAA==",
+    "orig": [
+      1023,
+      1537
+    ],
+    "bytes": 92454
+  },
+  "cava-cacao-sunset": {
+    "src": "/images/cava-cacao-sunset.webp",
+    "width": 1023,
+    "height": 1537,
+    "blurDataURL": "data:image/webp;base64,UklGRnAAAABXRUJQVlA4IGQAAAAQBACdASoQABgAPu1iqU2ppaOiMAgBMB2JYgC06BRyH+OxpYtL6u7CQAD+6OcAVgZmfDYeMM4Hpkj/3jj7R+0RldbE/rx9grnlH6rwZapgAWzQ7vBJCfxtpAKxJkxoJoMeDAAA",
+    "orig": [
+      1023,
+      1537
+    ],
+    "bytes": 127098
+  },
+  "cava-ivory-poolside": {
+    "src": "/images/cava-ivory-poolside.webp",
+    "width": 1023,
+    "height": 1537,
+    "blurDataURL": "data:image/webp;base64,UklGRoIAAABXRUJQVlA4IHYAAABQBACdASoQABgAPu1iqU2ppaQiMAgBMB2JYgCw8XgAfawz1RHVK/6syPqwAPZfNLzgRrruFNkYlhCSQfCrXmju+eJdzkAI2Gt+rM4GtRIKe6XIeanrS7fAfR/f6yhgqsBylIC0dB4xsZg41ZfcrlJnrqEBsHAA"
+  },
+  "cava-sand-poolside": {
+    "src": "/images/cava-sand-poolside.webp",
+    "width": 1023,
+    "height": 1537,
+    "blurDataURL": "data:image/webp;base64,UklGRoQAAABXRUJQVlA4IHgAAAAwBACdASoQABgAPu1kqU2ppaOiMAgBMB2JZACsH8ACGyJW1+4pnnagHAAA/t6kVzCkfY9UGX7eFWvXuShUy6J0F5D9bFq/YhdpXUnjrXVIACvwTIbvTQPHdevMSHzKrv2Ia152axPxBGvFZ/jtiXp0qwU5HEgAAAA="
+  }
+}
