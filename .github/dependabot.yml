@@ -1,13 +1,12 @@
-# Keeps uv.lock fresh so the committed lock (and the Community Cloud demo, which
-# deploys from it) tracks current Streamlit and its dependencies. All updates are
-# batched into one daily PR to keep the noise down for a template repo.
+# Keeps the npm dependencies fresh. All updates are batched into one daily PR
+# to keep the noise down.
 version: 2
 updates:
-  - package-ecosystem: "uv"
+  - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "daily"
     groups:
-      python-dependencies:
+      npm-dependencies:
         patterns:
           - "*"

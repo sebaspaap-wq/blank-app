@@ -1,33 +1,24 @@
 {
-  "name": "Python 3.14",
-  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-  "image": "mcr.microsoft.com/devcontainers/python:3-3.14-bookworm",
+  "name": "CAVÁ — Next.js",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
   "customizations": {
     "codespaces": {
-      "openFiles": [
-        "README.md",
-        "streamlit_app.py"
-      ]
+      "openFiles": ["README.md", "src/app/page.tsx"]
     },
     "vscode": {
       "settings": {},
-      "extensions": [
-        "ms-python.python",
-        "ms-python.vscode-pylance"
-      ]
+      "extensions": ["bradlc.vscode-tailwindcss", "dbaeumer.vscode-eslint"]
     }
   },
-  "updateContentCommand": "if [ -f packages.txt ]; then sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y < packages.txt; fi; if ! command -v uv >/dev/null 2>&1; then curl -LsSf https://astral.sh/uv/install.sh | sh; fi; UV_BIN=$(command -v uv || echo \"$HOME/.local/bin/uv\"); UV_PROJECT_ENVIRONMENT=\"$HOME/.venvs/blank-app-template\" \"$UV_BIN\" sync",
+  "updateContentCommand": "npm install",
   "postAttachCommand": {
-    "server": "UV_BIN=$(command -v uv || echo \"$HOME/.local/bin/uv\"); UV_PROJECT_ENVIRONMENT=\"$HOME/.venvs/blank-app-template\" \"$UV_BIN\" run streamlit run streamlit_app.py --server.enableCORS false --server.enableXsrfProtection false"
+    "server": "npm run dev"
   },
   "portsAttributes": {
-    "8501": {
+    "3000": {
       "label": "Application",
       "onAutoForward": "openPreview"
     }
   },
-  "forwardPorts": [
-    8501
-  ]
+  "forwardPorts": [3000]
 }

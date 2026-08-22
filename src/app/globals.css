@@ -1,0 +1,460 @@
+@import "tailwindcss";
+
+/* ============================================================
+   CAVÁ — DESIGN TOKENS
+   ============================================================ */
+@theme {
+  --color-noir: #080807;
+  --color-ivory: #f5f2eb;
+  --color-sand: #c8b6a2;
+  --color-taupe: #a89683;
+  --color-cacao: #3a2920;
+  --color-paper: #ffffff;
+
+  --font-serif: var(--font-playfair), "Times New Roman", serif;
+  --font-sans: var(--font-dm), ui-sans-serif, system-ui, sans-serif;
+
+  --ease-cava: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --breakpoint-xs: 30rem;
+}
+
+:root {
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft: cubic-bezier(0.65, 0, 0.35, 1);
+  --nav-h: 5.25rem;
+  --gutter: 1.5rem;
+  --hairline: rgba(8, 8, 7, 0.14);
+  --hairline-light: rgba(245, 242, 235, 0.18);
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --gutter: 3rem;
+    --nav-h: 6rem;
+  }
+}
+@media (min-width: 90rem) {
+  :root {
+    --gutter: 5rem;
+  }
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-ivory);
+  color: var(--color-noir);
+  font-family: var(--font-sans);
+  font-weight: 300;
+  font-synthesis-weight: none;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+body[data-locked="true"] {
+  overflow: hidden;
+}
+
+::selection {
+  background: var(--color-noir);
+  color: var(--color-ivory);
+}
+
+/* Refined, nearly invisible scrollbar */
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 7px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(8, 8, 7, 0.18);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(8, 8, 7, 0.32);
+  }
+}
+
+:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 6px;
+}
+
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+
+img {
+  display: block;
+}
+
+/* ============================================================
+   TYPOGRAPHY PRIMITIVES
+   ============================================================ */
+.font-serif-display {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  line-height: 0.94;
+  letter-spacing: -0.005em;
+}
+
+.eyebrow {
+  font-size: 0.5625rem;
+  font-weight: 400;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+@media (min-width: 48rem) {
+  .eyebrow {
+    font-size: 0.625rem;
+    letter-spacing: 0.46em;
+  }
+}
+
+.nav-label {
+  font-size: 0.625rem;
+  font-weight: 400;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.wordmark {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  text-indent: 0.24em;
+  line-height: 1;
+}
+
+.body-copy {
+  font-size: 0.875rem;
+  line-height: 1.95;
+  letter-spacing: 0.015em;
+  font-weight: 300;
+}
+
+@media (min-width: 48rem) {
+  .body-copy {
+    font-size: 0.9375rem;
+  }
+}
+
+.price {
+  font-size: 0.8125rem;
+  letter-spacing: 0.14em;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   LINKS — thin animated underline
+   ============================================================ */
+.link-line {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding-bottom: 0.5rem;
+}
+
+.link-line::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 1px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(1);
+  transform-origin: right;
+  transition: transform 0.7s var(--ease);
+}
+
+.link-line .arrow {
+  display: inline-block;
+  transition: transform 0.7s var(--ease);
+}
+
+@media (hover: hover) {
+  .link-line:hover::after {
+    animation: line-sweep 0.9s var(--ease) forwards;
+  }
+  .link-line:hover .arrow {
+    transform: translateX(0.4rem);
+  }
+}
+
+@keyframes line-sweep {
+  0% {
+    transform: scaleX(1);
+    transform-origin: right;
+  }
+  49% {
+    transform: scaleX(0);
+    transform-origin: right;
+  }
+  50% {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  100% {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+/* Underline that grows from nothing on hover (navigation) */
+.link-grow {
+  position: relative;
+}
+.link-grow::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -0.35rem;
+  height: 1px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.6s var(--ease);
+}
+@media (hover: hover) {
+  .link-grow:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+/* ============================================================
+   BUTTON — quiet, rectilinear
+   ============================================================ */
+.btn-solid {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 1.25rem 2rem;
+  overflow: hidden;
+  border: 1px solid var(--color-noir);
+  background: var(--color-noir);
+  color: var(--color-ivory);
+  font-size: 0.625rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  transition: color 0.6s var(--ease), border-color 0.6s var(--ease);
+}
+
+.btn-solid > span {
+  position: relative;
+  z-index: 1;
+}
+
+.btn-solid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-ivory);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.65s var(--ease);
+}
+
+@media (hover: hover) {
+  .btn-solid:hover {
+    color: var(--color-noir);
+  }
+  .btn-solid:hover::before {
+    transform: scaleY(1);
+  }
+}
+
+.btn-solid:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ============================================================
+   REVEAL — IntersectionObserver driven
+   ============================================================ */
+[data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 2.25rem, 0);
+  transition: opacity 1.35s var(--ease), transform 1.35s var(--ease);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+[data-reveal="fade"] {
+  transform: none;
+}
+
+[data-reveal].is-revealed {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  will-change: auto;
+}
+
+/* Line-by-line masked text reveal */
+.reveal-line {
+  display: block;
+  overflow: hidden;
+}
+
+.reveal-line > span {
+  display: block;
+  transform: translate3d(0, 110%, 0);
+  transition: transform 1.25s var(--ease);
+  transition-delay: var(--line-delay, 0ms);
+}
+
+.is-revealed .reveal-line > span,
+.reveal-line.is-revealed > span {
+  transform: translate3d(0, 0, 0);
+}
+
+/* Image mask reveal.
+   The clip-path is applied to a CHILD of the observed element: a clipped
+   element reports an empty intersection rect, so observing it directly
+   would mean it never reveals itself. */
+.img-reveal {
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 1.6s var(--ease);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.is-revealed .img-reveal,
+.is-revealed.img-reveal {
+  clip-path: inset(0 0 0% 0);
+}
+
+/* ============================================================
+   MEDIA
+   ============================================================ */
+.media {
+  position: relative;
+  overflow: hidden;
+  background-color: #ded7cb;
+}
+
+.media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-zoom img {
+  transition: transform 1.5s var(--ease), filter 1.5s var(--ease);
+}
+
+@media (hover: hover) {
+  .group\/card:hover .media-zoom img {
+    transform: scale(1.045);
+  }
+}
+
+/* ============================================================
+   CUSTOM CURSOR
+   ============================================================ */
+.cursor-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  pointer-events: none;
+  mix-blend-mode: difference;
+}
+
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .cursor-root {
+    display: none;
+  }
+}
+
+/* ============================================================
+   MISC
+   ============================================================ */
+.hairline-t {
+  border-top: 1px solid var(--hairline);
+}
+.hairline-b {
+  border-bottom: 1px solid var(--hairline);
+}
+.on-dark .hairline-t {
+  border-color: var(--hairline-light);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.gutter {
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+  .reveal-line > span {
+    transform: none;
+  }
+  .img-reveal {
+    clip-path: none;
+  }
+}
+
+/* ============================================================
+   POINTER — the site supplies its own cursor on fine pointers
+   ============================================================ */
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  html,
+  body,
+  a,
+  button,
+  [role="button"],
+  summary {
+    cursor: none;
+  }
+  input,
+  textarea,
+  select {
+    cursor: text;
+  }
+}
