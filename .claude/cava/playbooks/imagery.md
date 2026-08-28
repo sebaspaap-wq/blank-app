@@ -2,13 +2,34 @@
 
 ## How the agent produces images
 
-**Preferred:** the Canva MCP tools if connected in the session — `generate-design`,
-`generate-design-structured` for layouts, `edit-design` to iterate, `export-design` for PNG/JPG.
-Check `list-brand-kits` first and use the CAVÁ kit if one exists.
+**Primary — Higgsfield.** `marketing/tools/higgsfield/` renders photography with Soul
+(text-to-image) and animates stills into Reels with DoP (image-to-video).
 
-**Fallback when no image tool is connected:** write the full generation prompts to
-`creative/prompts.md` — one numbered, ready-to-paste prompt per asset, plus the exact crop
-sizes needed. Never ship a campaign with a missing-image placeholder and no prompt.
+```bash
+cd marketing/tools/higgsfield
+node render.mjs preflight                     # always first
+node render.mjs brief.json ../../<campaign>/creative
+```
+
+Write a shot brief as JSON (see `brief.example.json`), one object per shot, using the prompt
+formula below. Ratio keys: `feed-4x5`, `story-9x16`, `square-1x1`, `email-2x1`. Use
+`batch_size: 4` on hero shots and pick the best frame — do not ship the first render.
+
+Read `marketing/tools/higgsfield/README.md` before the first run of a cycle. Two things
+that will otherwise waste your time: a `status: "nsfw"` result means Soul's filter rejected
+the prompt (close the robe, drop skin references, retry — it is not a failure), and the SDK
+reports **any** HTTP 403 as "Not enough credits", which may actually be a network block.
+
+*Product consistency:* prompts alone will not hold the robe's details across a campaign.
+Train a custom reference in Higgsfield on `.claude/cava/assets/` and set `custom_reference_id`
+on every shot. Note this in `LOG.md` once done, with the id.
+
+**Layout work — Canva MCP** if connected: `generate-design-structured` for anything with type
+in it, `export-design` for the final PNG. Photography still comes from Higgsfield.
+
+**If neither is available:** write the full prompts to `creative/prompts.md` — one numbered,
+ready-to-paste prompt per asset, plus the crop sizes. Never ship a campaign with a missing
+image and no prompt.
 
 Reference frames live in `.claude/cava/assets/`. Match their lighting and surfaces —
 they are the look, not a starting point to drift from.

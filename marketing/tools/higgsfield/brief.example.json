@@ -1,0 +1,30 @@
+{
+  "_comment": "CAVÁ shot brief. Prompts follow the formula in .claude/cava/playbooks/imagery.md. The agent writes one of these per campaign cycle.",
+  "campaign": "2026-08-28-weight-angle",
+  "shots": [
+    {
+      "id": "weight-espresso-terrace",
+      "ratio": "feed-4x5",
+      "batch_size": 4,
+      "prompt": "Full-length editorial photograph of a woman in an espresso brown heavyweight terry kimono-cut short bathrobe, shawl collar with tonal piping, patch pockets, tied self-belt, small tonal embroidered monogram at left chest, thigh-length, robe closed and belt tied — standing on a limestone terrace beside an olive tree in a weathered stone pot, sea beyond — last hour before sunset, warm directional light, long shadows — undone low bun, bare feet, no jewellery, gaze off-camera — shot on 50mm, f/2, natural light, fine grain, unretouched skin texture — muted Mediterranean palette, travertine and linen, no colour cast"
+    },
+    {
+      "id": "weight-ecru-interior",
+      "ratio": "feed-4x5",
+      "batch_size": 4,
+      "prompt": "Full-length editorial photograph of a woman in an ecru cream heavyweight terry kimono-cut short bathrobe, shawl collar with tonal piping, patch pockets, tied self-belt, small tonal embroidered monogram at left chest, thigh-length, robe closed and belt tied — standing at a floor-to-ceiling window in a plaster interior, sheer linen curtain, sea visible beyond — flat bright morning light — undone low bun, bare feet, no jewellery, gaze off-camera — shot on 50mm, f/2, natural light, fine grain, unretouched skin texture — muted Mediterranean palette, travertine and linen, no colour cast"
+    },
+    {
+      "id": "weight-taupe-doorway",
+      "ratio": "story-9x16",
+      "batch_size": 4,
+      "prompt": "Full-length editorial photograph of a woman in a taupe heavyweight terry kimono-cut short bathrobe, shawl collar with tonal piping, patch pockets, tied self-belt, small tonal embroidered monogram at left chest, thigh-length, robe closed and belt tied — walking through an open plaster doorway, morning light falling in a long rectangle across a travertine floor — overcast diffuse light — undone low bun, bare feet, no jewellery, gaze off-camera — shot on 50mm, f/2, natural light, fine grain, unretouched skin texture — muted Mediterranean palette, travertine and linen, no colour cast"
+    },
+    {
+      "id": "weight-espresso-email",
+      "ratio": "email-2x1",
+      "batch_size": 1,
+      "prompt": "Wide editorial still life, no model: an espresso brown heavyweight terry kimono-cut short bathrobe folded on a travertine bench beside a lantern and a folded ecru towel, small tonal embroidered monogram visible — last hour before sunset, warm low light, long shadows — shot on 50mm, f/2.8, natural light, fine grain — muted Mediterranean palette, no colour cast"
+    }
+  ]
+}
