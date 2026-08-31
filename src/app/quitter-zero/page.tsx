@@ -29,7 +29,7 @@ export default function QuitterZeroPage() {
         title="The finish line has a name."
         intro={zero.description}
       />
-      <ZeroSection compact />
+      <ZeroSection compact unlockOn="view" />
 
       <Section tone="bone">
         <Container>

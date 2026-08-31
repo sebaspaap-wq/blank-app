@@ -181,6 +181,19 @@ export const zero = {
   name: "QUITTER ZERO",
   strength: "0 mg",
   headline: "The finish line.",
+  /**
+   * The sealed state. QUITTER ZERO is not shown until the visitor has been
+   * through the 90-day timeline — the reveal is the reward, so this copy is
+   * what stands in its place until then.
+   */
+  locked: {
+    eyebrow: "0 mg · Sealed",
+    headline: "Nobody sees this before day 90.",
+    description:
+      "There is a QUITTER ZERO package behind that lock. We are not going to show it to you now — go through the ninety days and it opens.",
+    hint: "The lock opens at day 90 of the timeline above.",
+    hintStandalone: "Stay a moment — or press the lock.",
+  },
   description:
     "Complete your 90-day QUITTER programme and unlock your QUITTER ZERO package.",
   conditions: [

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Container, Eyebrow, Section } from "@/components/ui/Section";
 import { timeline, timelineOutro } from "@/content/timeline";
 import { track } from "@/lib/analytics";
+import { setJourneyProgress } from "@/lib/journey";
 import { cx } from "@/lib/format";
 
 /**
@@ -36,6 +37,8 @@ export function Timeline() {
       const distance = rect.height + start - end;
       const next = Math.min(1, Math.max(0, travelled / distance));
       setProgress(next);
+      // The QUITTER ZERO vault listens to this: day 90 is what opens the lock.
+      setJourneyProgress(next);
 
       if (!interacted.current && next > 0.05) {
         interacted.current = true;

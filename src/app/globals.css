@@ -120,8 +120,128 @@
     animation-delay: var(--rise-delay, 120ms);
   }
 
+  /* Opening choreography: the packs and the gum arrive, they do not fade in. */
+  .arrive {
+    animation: arrive 1.5s var(--ease-quit) both;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+
+  .piece {
+    position: absolute;
+    display: block;
+    border-radius: 34%;
+    animation: piece-in 1.35s var(--ease-quit) both;
+    animation-delay: var(--rise-delay, 0ms);
+    will-change: transform, opacity;
+  }
+
+  /* Three parallax planes give the scatter depth without a physics engine. */
+  .plane {
+    position: absolute;
+    inset: 0;
+    transform: translate3d(
+      calc(var(--px, 0) * var(--depth, 1)),
+      calc(var(--py, 0) * var(--depth, 1)),
+      0
+    );
+    transition: transform 0.6s var(--ease-quit);
+  }
+
+  /* One specular pass across the finished scene, once, on load. */
+  .sweep {
+    position: absolute;
+    inset: -20% -60%;
+    pointer-events: none;
+    background: linear-gradient(
+      104deg,
+      rgba(255, 255, 255, 0) 38%,
+      rgba(255, 255, 255, 0.8) 50%,
+      rgba(255, 255, 255, 0) 62%
+    );
+    animation: sweep 1.9s var(--ease-quit) 0.75s both;
+  }
+
   .float-slow {
     animation: float-slow 9s ease-in-out 1.6s infinite;
+  }
+
+  /* ------------------------------------------------------------------
+     The QUITTER ZERO vault: sealed until the 90 days are done.
+     State lives on the container as data-state; every part reads from it.
+     ------------------------------------------------------------------ */
+  .vault-pack {
+    opacity: 0;
+    transform: scale(0.92) translate3d(0, 20px, 0);
+    transition:
+      opacity 0.9s var(--ease-quit) 0.65s,
+      transform 1.2s var(--ease-quit) 0.65s;
+  }
+
+  [data-state="unlocking"] .vault-pack,
+  [data-state="unlocked"] .vault-pack {
+    opacity: 1;
+    transform: none;
+  }
+
+  .vault-bloom {
+    opacity: 0;
+  }
+
+  [data-state="unlocking"] .vault-bloom {
+    animation: bloom 1.4s var(--ease-quit) 0.5s both;
+  }
+
+  [data-state="unlocked"] .vault-bloom {
+    opacity: 0.85;
+  }
+
+  [data-state="unlocked"] .vault-seal {
+    display: none;
+  }
+
+  [data-state="unlocking"] .vault-half--left {
+    animation: seal-left 1s var(--ease-quit) 0.45s both;
+  }
+
+  [data-state="unlocking"] .vault-half--right {
+    animation: seal-right 1s var(--ease-quit) 0.45s both;
+  }
+
+  /* Everything printed on the door — mark, lock, read-out — leaves together,
+     a beat before the door itself parts. */
+  .vault-face {
+    transition:
+      opacity 0.45s var(--ease-quit),
+      transform 0.6s var(--ease-quit);
+  }
+
+  [data-state="unlocking"] .vault-face {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  .vault-lock {
+    transition:
+      opacity 0.5s var(--ease-quit) 0.35s,
+      transform 0.6s var(--ease-quit) 0.35s;
+  }
+
+  [data-state="unlocking"] .vault-lock {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.88);
+  }
+
+  .vault-shackle {
+    transform-origin: 74% 78%;
+    transition: transform 0.45s var(--ease-quit);
+  }
+
+  [data-state="unlocking"] .vault-shackle {
+    transform: rotate(-38deg) translateY(-1px);
+  }
+
+  [data-nudge="true"] .vault-lock {
+    animation: lock-nudge 0.55s ease-in-out;
   }
 
   .hairline {
@@ -193,5 +313,78 @@
   }
   to {
     transform: scaleY(1);
+  }
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(var(--from-x, 0), var(--from-y, 60px), 0)
+      rotate(var(--from-r, 0deg)) scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes piece-in {
+  from {
+    opacity: 0;
+    transform: translate3d(var(--from-x, 0), var(--from-y, 80px), 0)
+      rotate(var(--from-r, 0deg)) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(var(--r, 0deg)) scale(1);
+  }
+}
+
+/* The unlock: shackle turns, seal parts, light spills out. */
+@keyframes seal-left {
+  to {
+    transform: translate3d(-104%, 0, 0);
+  }
+}
+
+@keyframes seal-right {
+  to {
+    transform: translate3d(104%, 0, 0);
+  }
+}
+
+@keyframes bloom {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+
+@keyframes lock-nudge {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-6px, 0, 0); }
+  40% { transform: translate3d(5px, 0, 0); }
+  60% { transform: translate3d(-3px, 0, 0); }
+  80% { transform: translate3d(2px, 0, 0); }
+}
+
+@keyframes sweep {
+  from {
+    opacity: 0;
+    transform: translate3d(-55%, 0, 0);
+  }
+  35% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(55%, 0, 0);
   }
 }

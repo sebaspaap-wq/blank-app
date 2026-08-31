@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { PackShot } from "@/components/product/PackShot";
+import { HeroStage } from "@/components/product/HeroStage";
 import { Container, Eyebrow } from "@/components/ui/Section";
 import { ButtonLink } from "@/components/ui/Button";
 import { TrackedLink } from "@/components/ui/TrackedLink";
@@ -31,9 +31,24 @@ export function Hero() {
               Nicotine replacement · 2 mg &amp; 4 mg
             </Eyebrow>
 
-            <h1 className="rise mt-6 text-display" style={{ "--rise-delay": "80ms" } as CSSProperties}>
-              <span className="block">90 days.</span>
-              <span className="block text-label">One decision.</span>
+            <h1 className="mt-6 text-display">
+              <span className="rise block" style={{ "--rise-delay": "60ms" } as CSSProperties}>
+                90 days.
+              </span>
+              <span className="block text-label">
+                <span
+                  className="rise inline-block"
+                  style={{ "--rise-delay": "210ms" } as CSSProperties}
+                >
+                  One
+                </span>{" "}
+                <span
+                  className="rise inline-block"
+                  style={{ "--rise-delay": "340ms" } as CSSProperties}
+                >
+                  decision.
+                </span>
+              </span>
             </h1>
 
             <p
@@ -83,28 +98,7 @@ export function Hero() {
 
           {/* Product stage */}
           <div className="relative">
-            <div className="relative mx-auto aspect-square w-full max-w-[26rem] sm:max-w-[34rem]">
-              <div
-                aria-hidden="true"
-                className="absolute inset-[8%] rounded-full"
-                style={{
-                  background:
-                    "radial-gradient(circle at 50% 42%, #ffffff 0%, rgba(247,246,242,0.6) 45%, rgba(247,246,242,0) 72%)",
-                }}
-              />
-              <div
-                className="pack-enter float-slow absolute left-[4%] top-[8%] w-[56%]"
-                style={{ "--rise-delay": "220ms" } as CSSProperties}
-              >
-                <PackShot strength="4 mg" angle={-19} priority />
-              </div>
-              <div
-                className="pack-enter absolute right-[2%] top-[30%] w-[48%]"
-                style={{ "--rise-delay": "380ms" } as CSSProperties}
-              >
-                <PackShot strength="2 mg" angle={-12} />
-              </div>
-            </div>
+            <HeroStage />
           </div>
         </div>
 
