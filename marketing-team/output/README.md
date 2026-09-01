@@ -10,6 +10,7 @@ lees ze, beslis zelf, en pas ze aan waar je het beter weet.
 | `03-linkedin-post.md` | social_organic | PASS |
 | `04-artikel-outline.md` | own_site | PASS |
 | `05-email-wachtlijst.md` | email | PASS |
+| `06-meta-ad.md` | social_paid | PASS |
 
 Zelf opnieuw controleren:
 
