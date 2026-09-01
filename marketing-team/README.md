@@ -70,6 +70,34 @@ wat een agent precies meekrijgt.
 In `output/` staat al een complete eerste campagne: wachtlijstpagina, vijf zoekadvertenties, een
 LinkedIn-post, vijf artikelen en drie wachtlijstmails. Alle vijf door de poort.
 
+## Zonder API-sleutel
+
+Drie van de vier onderdelen werken vandaag al, zonder sleutel en zonder installatie.
+
+**De poort.** Draait op Node zelf — geen dependencies, geen netwerk, geen kosten.
+
+```bash
+node marketing-team/compliance/check.mjs --file concept.md --channel own_site
+```
+
+**De agents als plakklare prompt.** `--dry-run` roept de API niet aan; het drukt precies af wat
+een agent meekrijgt. Kopieer dat naar Claude.ai, ChatGPT of welke chat je al betaalt, plak je
+briefing eronder, en haal het antwoord daarna door de poort.
+
+```bash
+npm run marketing -- copywriter --brief "5 varianten voor de wachtlijstkop" --dry-run
+```
+
+Werk je vaker met één agent, zet die prompt dan één keer vast als Project-instructie of Custom
+GPT. Dan is het voortaan alleen nog je briefing typen.
+
+**De subagents in deze repo.** Werk je in Claude Code, dan staan `quitter-copywriter` en
+`quitter-compliance` klaar in `.claude/agents/`. Geen aparte sleutel nodig — ze draaien op de
+sessie die je al hebt.
+
+De runner (`npm run marketing`) is het enige dat een sleutel vraagt. Die automatiseert de lus
+schrijven → poort → herschrijven; met de hand doe je precies hetzelfde, alleen zelf.
+
 ## De poort gebruiken
 
 ```bash
