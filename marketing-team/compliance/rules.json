@@ -1,0 +1,278 @@
+{
+  "$comment": "Machineleesbare regels voor het QUITTER-marketingteam. rules.md is de leesbare bron. check.mjs handhaaft dit bestand.",
+  "version": "1.0.0",
+  "product": {
+    "name": "QUITTER",
+    "type": "geneesmiddel",
+    "activeSubstance": "nicotine",
+    "strengths": [
+      "2 mg",
+      "4 mg"
+    ],
+    "minimumAge": 18,
+    "country": "NL"
+  },
+  "mandatoryNotice": {
+    "status": "TE_BEVESTIGEN",
+    "text": "[VERPLICHTE WAARSCHUWINGSZIN — letterlijk overnemen van de Keuringsraad KOAG/KAG]",
+    "note": "Laat geen AI-model deze zin formuleren. Haal de exacte Nederlandse formulering bij de Keuringsraad en vul hem hier één keer in. check.mjs eist letterlijke aanwezigheid zodra de status BEVESTIGD is."
+  },
+  "blockPatterns": [
+    {
+      "id": "A2-absoluut",
+      "rule": "A2",
+      "severity": "block",
+      "why": "Absolute belofte over de uitkomst van een stoppoging.",
+      "patterns": [
+        "gegarandeerd",
+        "guaranteed",
+        "\\b100\\s?%",
+        "altijd succes",
+        "zeker stoppen",
+        "je stopt sowieso",
+        "werkt altijd",
+        "always works"
+      ],
+      "instead": "Beschrijf het programma en het gedrag, niet de uitkomst: 'negentig dagen, één plan'."
+    },
+    {
+      "id": "A3-bewijs",
+      "rule": "A3",
+      "severity": "block",
+      "why": "Suggereert wetenschappelijk bewijs dat niet in het dossier zit.",
+      "patterns": [
+        "klinisch bewezen",
+        "clinically proven",
+        "wetenschappelijk bewezen",
+        "scientifically proven",
+        "uit onderzoek blijkt",
+        "studies show",
+        "bewezen effectief",
+        "proven effective"
+      ],
+      "instead": "Laat bewijsclaims weg, of citeer letterlijk uit de goedgekeurde productinformatie."
+    },
+    {
+      "id": "A3-statistiek",
+      "rule": "A3",
+      "severity": "block",
+      "why": "Percentage of slagingskans in een claimzin.",
+      "patterns": [
+        "\\b\\d{1,3}\\s?%\\s*(meer|hoger|kans|succes|effectiever|success|more)",
+        "(kans|slagingskans|success rate)\\s*van\\s*\\d{1,3}\\s?%",
+        "\\b\\d\\s*(op|van)\\s*de\\s*\\d+\\s*(mensen|rokers|klanten)"
+      ],
+      "instead": "Geen cijfers over uitkomsten. Cijfers over het product (aantal doosjes, dagen, prijs) mogen wel."
+    },
+    {
+      "id": "A6-veiligheid",
+      "rule": "A6",
+      "severity": "block",
+      "why": "Veiligheidsclaim bij een geneesmiddel.",
+      "patterns": [
+        "geen bijwerkingen",
+        "zonder bijwerkingen",
+        "no side effects",
+        "volkomen veilig",
+        "helemaal veilig",
+        "completely safe",
+        "veilig voor iedereen",
+        "safe for everyone",
+        "geschikt voor iedereen"
+      ],
+      "instead": "Verwijs naar de bijsluiter. Zeg niets over veiligheid dat daar niet in staat."
+    },
+    {
+      "id": "A4-vergelijking",
+      "rule": "A4",
+      "severity": "block",
+      "why": "Vergelijkende reclame met andere geneesmiddelenmerken.",
+      "patterns": [
+        "beter dan nicorette",
+        "beter dan nicotinell",
+        "beter dan niquitin",
+        "better than nicorette",
+        "effectiever dan",
+        "sterker dan de concurrent",
+        "de beste nicotine",
+        "nummer 1",
+        "#1 ",
+        "marktleider"
+      ],
+      "instead": "Beschrijf wat QUITTER is, niet wat een ander niet is."
+    },
+    {
+      "id": "A1-genezing",
+      "rule": "A1",
+      "severity": "block",
+      "why": "Claim over genezing of gezondheidsuitkomst buiten de indicatie.",
+      "patterns": [
+        "geneest",
+        "genezing",
+        "cures?\\b",
+        "je longen herstellen",
+        "verlengt je leven",
+        "maakt je gezond",
+        "wordt je longen"
+      ],
+      "instead": "Blijf bij de goedgekeurde indicatie: nicotinevervanging bij het stoppen met roken."
+    },
+    {
+      "id": "A5-aanbeveling",
+      "rule": "A5",
+      "severity": "block",
+      "why": "Aanbeveling door beroepsbeoefenaren of bekende personen.",
+      "patterns": [
+        "aanbevolen door (artsen|dokters|apothekers|huisartsen)",
+        "recommended by doctors",
+        "onze arts",
+        "artsen adviseren",
+        "apothekers kiezen",
+        "bekend van tv"
+      ],
+      "instead": "Laat de aanbeveling weg. Feitelijke informatie over registratie en fabrikant mag wel."
+    },
+    {
+      "id": "A9-urgentie",
+      "rule": "A9",
+      "severity": "block",
+      "why": "Kunstmatige schaarste of tijdsdruk bij een geneesmiddel.",
+      "patterns": [
+        "op\\s?=\\s?op",
+        "laatste kans",
+        "nog maar \\d+ (uur|stuks|dagen)",
+        "mis het niet",
+        "don't miss out",
+        "alleen vandaag",
+        "only today",
+        "bijna uitverkocht"
+      ],
+      "instead": "Geen urgentie. Het aanbod is een programma van negentig dagen, geen uitverkoop."
+    },
+    {
+      "id": "A7-minderjarigen",
+      "rule": "A7",
+      "severity": "block",
+      "why": "Uiting die zich op minderjarigen richt.",
+      "patterns": [
+        "voor tieners",
+        "for teens",
+        "op school",
+        "jongeren vanaf 1[0-7]",
+        "scholieren"
+      ],
+      "instead": "Het product is uitsluitend voor 18 jaar en ouder."
+    }
+  ],
+  "warnPatterns": [
+    {
+      "id": "A3-percentage",
+      "rule": "A3",
+      "severity": "warn",
+      "why": "Elk percentage in een geneesmiddelenuiting moet onderbouwd zijn. Prijs- en productcijfers mogen, uitkomstcijfers niet.",
+      "patterns": [
+        "\\b\\d{1,3}\\s?%"
+      ],
+      "instead": "Gaat het over de werking of over stoppen: weglaten. Gaat het over prijs of btw: laat de compliance-agent het bevestigen."
+    },
+    {
+      "id": "A8-cadeau",
+      "rule": "A8",
+      "severity": "warn",
+      "why": "Cadeau of premie gekoppeld aan de aankoop van een geneesmiddel. Raakt de ZERO-constructie.",
+      "patterns": [
+        "gratis bij aankoop",
+        "cadeau bij",
+        "free gift",
+        "krijg je gratis",
+        "gratis erbij",
+        "ontvang gratis"
+      ],
+      "instead": "Presenteer ZERO als onderdeel van het programma dat al betaald is, niet als premie erbovenop. Laat dit toetsen."
+    },
+    {
+      "id": "A2-superlatief",
+      "rule": "A2",
+      "severity": "warn",
+      "why": "Superlatief zonder onderbouwing.",
+      "patterns": [
+        "de beste",
+        "the best",
+        "revolutionair",
+        "revolutionary",
+        "uniek in nederland",
+        "enige echte",
+        "perfect"
+      ],
+      "instead": "Vervang door een concreet, controleerbaar feit."
+    },
+    {
+      "id": "C1-privacy",
+      "rule": "C1",
+      "severity": "warn",
+      "why": "Suggereert targeting op gezondheidsgedrag, wat met bijzondere persoonsgegevens niet mag.",
+      "patterns": [
+        "lookalike",
+        "klantlijst uploaden",
+        "retargeting van kopers",
+        "customer list upload"
+      ],
+      "instead": "Gebruik geen klantdata voor targeting. Werk met interesse- en zoekintentie zonder gezondheidskenmerken."
+    },
+    {
+      "id": "A1-belofte",
+      "rule": "A1",
+      "severity": "warn",
+      "why": "Belofte over de uitkomst van stoppen, net buiten de indicatie.",
+      "patterns": [
+        "stop(t|pen)? je met roken",
+        "maakt stoppen makkelijk",
+        "makes quitting easy",
+        "rookvrij in \\d+",
+        "nooit meer roken"
+      ],
+      "instead": "Beschrijf het programma, niet het resultaat: 'een programma van negentig dagen'."
+    }
+  ],
+  "requiredForPublicAds": {
+    "activeSubstanceMentioned": true,
+    "readTheLeafletAdvice": true,
+    "mandatoryNotice": true,
+    "ageStatement": true
+  },
+  "channels": {
+    "own_site": {
+      "koagRequired": true,
+      "notes": "Waarschuwingszin en EU-logo verplicht."
+    },
+    "email": {
+      "koagRequired": true,
+      "notes": "Geen gezondheidssegmentatie naar derden."
+    },
+    "search_ads": {
+      "koagRequired": true,
+      "notes": "Vooraf keuren; platformbeleid gezondheid."
+    },
+    "social_organic": {
+      "koagRequired": true,
+      "notes": "Zodra het product genoemd wordt, is het reclame."
+    },
+    "social_paid": {
+      "koagRequired": true,
+      "notes": "Beperkt door platformbeleid."
+    },
+    "influencer": {
+      "koagRequired": true,
+      "allowed": false,
+      "notes": "Raakt A5 — niet doen."
+    },
+    "pr": {
+      "koagRequired": false,
+      "notes": "Gesponsorde artikelen zijn wél reclame."
+    },
+    "b2b": {
+      "koagRequired": false,
+      "notes": "Richting eindgebruiker gelden alle publieksregels alsnog."
+    }
+  }
+}

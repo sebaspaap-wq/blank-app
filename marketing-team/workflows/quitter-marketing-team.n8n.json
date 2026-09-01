@@ -1,0 +1,352 @@
+{
+  "name": "QUITTER — marketingteam",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "trigger-chat",
+      "name": "Jij (chat)",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -400,
+        0
+      ],
+      "webhookId": "quitter-marketing-team"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Je werkt voor QUITTER, een Nederlands merk dat nicotinevervangende therapie verkoopt als een programma van 90 dagen. QUITTER is een GENEESMIDDEL. Alles wat je laat maken valt onder de Nederlandse regels voor publieksreclame voor geneesmiddelen.\n\nHarde grenzen (nooit overschrijden):\n1. Geen claim over werking, veiligheid of resultaat buiten de goedgekeurde productinformatie.\n2. Geen cijfers, percentages of onderzoeksresultaten. Nooit \"bewezen\".\n3. Geen vergelijking met andere merken, geen superlatieven.\n4. Geen veiligheidsclaims.\n5. Geen aanbevelingen door artsen, apothekers of bekende personen.\n6. Niets gericht op mensen onder de 18.\n7. Geen urgentie, schaarste of vooraf aangevinkte keuzes.\n8. Geen cadeau of premie gekoppeld aan de aankoop.\n9. Nooit een klantcitaat of review verzinnen.\n10. Nooit zelf de verplichte waarschuwingszin formuleren.\n\nJij bent het hoofd marketing. Je schrijft zelf niets: je verdeelt werk over je specialisten en bewaakt de kwaliteit.\n\nTeam (tools): research, strategist, copywriter, seo_content, social, email, art_director.\nPoort (tool): compliance_gate — verplicht, altijd, als laatste stap voor elke tekst.\n\nWerkwijze:\n1. Maak de opdracht scherp. Ontbreekt kanaal, taal, doelgroep of doel? Vraag het in maximaal drie vragen.\n2. Kies de specialisten en de volgorde. Meestal research -> strategist -> maker -> compliance_gate.\n3. Roep compliance_gate aan met JSON: {\"text\": \"<de volledige tekst>\", \"channel\": \"<kanaal>\", \"isPublicAd\": true|false}.\n4. Bij BLOCK: terug naar de maker met de reden. Maximaal twee rondes, daarna leg je het voor aan de mens.\n5. Lever op met: concept, oordeel van de poort, en wat er nog moet gebeuren (KOAG-keuring, beeld, planning).\n\nJe publiceert nooit zelf. De laatste stap is altijd een mens die goedkeurt.\n\nMerkstem: kort, zelfverzekerd, direct, premium. Geen uitroeptekens, geen emoji, geen angst.",
+          "maxIterations": 25
+        }
+      },
+      "id": "orchestrator",
+      "name": "Hoofd marketing",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -40,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-5",
+        "options": {
+          "temperature": 0.4,
+          "maxTokensToSample": 4096
+        }
+      },
+      "id": "model-orchestrator",
+      "name": "Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 20
+      },
+      "id": "memory",
+      "name": "Geheugen",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "name": "compliance_gate",
+        "description": "VERPLICHT voor elke tekst voordat je hem oplevert. Geef een JSON string mee: {\"text\": \"<volledige tekst>\", \"channel\": \"own_site|email|search_ads|social_organic|social_paid|influencer|pr|b2b\", \"isPublicAd\": true|false}. Geeft verdict BLOCK, PASS_MET_WAARSCHUWINGEN of PASS terug met de overtreden regels.",
+        "jsCode": "const RULES = {\n  \"mandatoryNotice\": {\n    \"status\": \"TE_BEVESTIGEN\",\n    \"text\": \"[VERPLICHTE WAARSCHUWINGSZIN — letterlijk overnemen van de Keuringsraad KOAG/KAG]\",\n    \"note\": \"Laat geen AI-model deze zin formuleren. Haal de exacte Nederlandse formulering bij de Keuringsraad en vul hem hier één keer in. check.mjs eist letterlijke aanwezigheid zodra de status BEVESTIGD is.\"\n  },\n  \"blockPatterns\": [\n    {\n      \"id\": \"A2-absoluut\",\n      \"rule\": \"A2\",\n      \"severity\": \"block\",\n      \"why\": \"Absolute belofte over de uitkomst van een stoppoging.\",\n      \"patterns\": [\n        \"gegarandeerd\",\n        \"guaranteed\",\n        \"\\\\b100\\\\s?%\",\n        \"altijd succes\",\n        \"zeker stoppen\",\n        \"je stopt sowieso\",\n        \"werkt altijd\",\n        \"always works\"\n      ],\n      \"instead\": \"Beschrijf het programma en het gedrag, niet de uitkomst: 'negentig dagen, één plan'.\"\n    },\n    {\n      \"id\": \"A3-bewijs\",\n      \"rule\": \"A3\",\n      \"severity\": \"block\",\n      \"why\": \"Suggereert wetenschappelijk bewijs dat niet in het dossier zit.\",\n      \"patterns\": [\n        \"klinisch bewezen\",\n        \"clinically proven\",\n        \"wetenschappelijk bewezen\",\n        \"scientifically proven\",\n        \"uit onderzoek blijkt\",\n        \"studies show\",\n        \"bewezen effectief\",\n        \"proven effective\"\n      ],\n      \"instead\": \"Laat bewijsclaims weg, of citeer letterlijk uit de goedgekeurde productinformatie.\"\n    },\n    {\n      \"id\": \"A3-statistiek\",\n      \"rule\": \"A3\",\n      \"severity\": \"block\",\n      \"why\": \"Percentage of slagingskans in een claimzin.\",\n      \"patterns\": [\n        \"\\\\b\\\\d{1,3}\\\\s?%\\\\s*(meer|hoger|kans|succes|effectiever|success|more)\",\n        \"(kans|slagingskans|success rate)\\\\s*van\\\\s*\\\\d{1,3}\\\\s?%\",\n        \"\\\\b\\\\d\\\\s*(op|van)\\\\s*de\\\\s*\\\\d+\\\\s*(mensen|rokers|klanten)\"\n      ],\n      \"instead\": \"Geen cijfers over uitkomsten. Cijfers over het product (aantal doosjes, dagen, prijs) mogen wel.\"\n    },\n    {\n      \"id\": \"A6-veiligheid\",\n      \"rule\": \"A6\",\n      \"severity\": \"block\",\n      \"why\": \"Veiligheidsclaim bij een geneesmiddel.\",\n      \"patterns\": [\n        \"geen bijwerkingen\",\n        \"zonder bijwerkingen\",\n        \"no side effects\",\n        \"volkomen veilig\",\n        \"helemaal veilig\",\n        \"completely safe\",\n        \"veilig voor iedereen\",\n        \"safe for everyone\",\n        \"geschikt voor iedereen\"\n      ],\n      \"instead\": \"Verwijs naar de bijsluiter. Zeg niets over veiligheid dat daar niet in staat.\"\n    },\n    {\n      \"id\": \"A4-vergelijking\",\n      \"rule\": \"A4\",\n      \"severity\": \"block\",\n      \"why\": \"Vergelijkende reclame met andere geneesmiddelenmerken.\",\n      \"patterns\": [\n        \"beter dan nicorette\",\n        \"beter dan nicotinell\",\n        \"beter dan niquitin\",\n        \"better than nicorette\",\n        \"effectiever dan\",\n        \"sterker dan de concurrent\",\n        \"de beste nicotine\",\n        \"nummer 1\",\n        \"#1 \",\n        \"marktleider\"\n      ],\n      \"instead\": \"Beschrijf wat QUITTER is, niet wat een ander niet is.\"\n    },\n    {\n      \"id\": \"A1-genezing\",\n      \"rule\": \"A1\",\n      \"severity\": \"block\",\n      \"why\": \"Claim over genezing of gezondheidsuitkomst buiten de indicatie.\",\n      \"patterns\": [\n        \"geneest\",\n        \"genezing\",\n        \"cures?\\\\b\",\n        \"je longen herstellen\",\n        \"verlengt je leven\",\n        \"maakt je gezond\",\n        \"wordt je longen\"\n      ],\n      \"instead\": \"Blijf bij de goedgekeurde indicatie: nicotinevervanging bij het stoppen met roken.\"\n    },\n    {\n      \"id\": \"A5-aanbeveling\",\n      \"rule\": \"A5\",\n      \"severity\": \"block\",\n      \"why\": \"Aanbeveling door beroepsbeoefenaren of bekende personen.\",\n      \"patterns\": [\n        \"aanbevolen door (artsen|dokters|apothekers|huisartsen)\",\n        \"recommended by doctors\",\n        \"onze arts\",\n        \"artsen adviseren\",\n        \"apothekers kiezen\",\n        \"bekend van tv\"\n      ],\n      \"instead\": \"Laat de aanbeveling weg. Feitelijke informatie over registratie en fabrikant mag wel.\"\n    },\n    {\n      \"id\": \"A9-urgentie\",\n      \"rule\": \"A9\",\n      \"severity\": \"block\",\n      \"why\": \"Kunstmatige schaarste of tijdsdruk bij een geneesmiddel.\",\n      \"patterns\": [\n        \"op\\\\s?=\\\\s?op\",\n        \"laatste kans\",\n        \"nog maar \\\\d+ (uur|stuks|dagen)\",\n        \"mis het niet\",\n        \"don't miss out\",\n        \"alleen vandaag\",\n        \"only today\",\n        \"bijna uitverkocht\"\n      ],\n      \"instead\": \"Geen urgentie. Het aanbod is een programma van negentig dagen, geen uitverkoop.\"\n    },\n    {\n      \"id\": \"A7-minderjarigen\",\n      \"rule\": \"A7\",\n      \"severity\": \"block\",\n      \"why\": \"Uiting die zich op minderjarigen richt.\",\n      \"patterns\": [\n        \"voor tieners\",\n        \"for teens\",\n        \"op school\",\n        \"jongeren vanaf 1[0-7]\",\n        \"scholieren\"\n      ],\n      \"instead\": \"Het product is uitsluitend voor 18 jaar en ouder.\"\n    }\n  ],\n  \"warnPatterns\": [\n    {\n      \"id\": \"A3-percentage\",\n      \"rule\": \"A3\",\n      \"severity\": \"warn\",\n      \"why\": \"Elk percentage in een geneesmiddelenuiting moet onderbouwd zijn. Prijs- en productcijfers mogen, uitkomstcijfers niet.\",\n      \"patterns\": [\n        \"\\\\b\\\\d{1,3}\\\\s?%\"\n      ],\n      \"instead\": \"Gaat het over de werking of over stoppen: weglaten. Gaat het over prijs of btw: laat de compliance-agent het bevestigen.\"\n    },\n    {\n      \"id\": \"A8-cadeau\",\n      \"rule\": \"A8\",\n      \"severity\": \"warn\",\n      \"why\": \"Cadeau of premie gekoppeld aan de aankoop van een geneesmiddel. Raakt de ZERO-constructie.\",\n      \"patterns\": [\n        \"gratis bij aankoop\",\n        \"cadeau bij\",\n        \"free gift\",\n        \"krijg je gratis\",\n        \"gratis erbij\",\n        \"ontvang gratis\"\n      ],\n      \"instead\": \"Presenteer ZERO als onderdeel van het programma dat al betaald is, niet als premie erbovenop. Laat dit toetsen.\"\n    },\n    {\n      \"id\": \"A2-superlatief\",\n      \"rule\": \"A2\",\n      \"severity\": \"warn\",\n      \"why\": \"Superlatief zonder onderbouwing.\",\n      \"patterns\": [\n        \"de beste\",\n        \"the best\",\n        \"revolutionair\",\n        \"revolutionary\",\n        \"uniek in nederland\",\n        \"enige echte\",\n        \"perfect\"\n      ],\n      \"instead\": \"Vervang door een concreet, controleerbaar feit.\"\n    },\n    {\n      \"id\": \"C1-privacy\",\n      \"rule\": \"C1\",\n      \"severity\": \"warn\",\n      \"why\": \"Suggereert targeting op gezondheidsgedrag, wat met bijzondere persoonsgegevens niet mag.\",\n      \"patterns\": [\n        \"lookalike\",\n        \"klantlijst uploaden\",\n        \"retargeting van kopers\",\n        \"customer list upload\"\n      ],\n      \"instead\": \"Gebruik geen klantdata voor targeting. Werk met interesse- en zoekintentie zonder gezondheidskenmerken.\"\n    },\n    {\n      \"id\": \"A1-belofte\",\n      \"rule\": \"A1\",\n      \"severity\": \"warn\",\n      \"why\": \"Belofte over de uitkomst van stoppen, net buiten de indicatie.\",\n      \"patterns\": [\n        \"stop(t|pen)? je met roken\",\n        \"maakt stoppen makkelijk\",\n        \"makes quitting easy\",\n        \"rookvrij in \\\\d+\",\n        \"nooit meer roken\"\n      ],\n      \"instead\": \"Beschrijf het programma, niet het resultaat: 'een programma van negentig dagen'.\"\n    }\n  ],\n  \"channels\": {\n    \"own_site\": {\n      \"koagRequired\": true,\n      \"notes\": \"Waarschuwingszin en EU-logo verplicht.\"\n    },\n    \"email\": {\n      \"koagRequired\": true,\n      \"notes\": \"Geen gezondheidssegmentatie naar derden.\"\n    },\n    \"search_ads\": {\n      \"koagRequired\": true,\n      \"notes\": \"Vooraf keuren; platformbeleid gezondheid.\"\n    },\n    \"social_organic\": {\n      \"koagRequired\": true,\n      \"notes\": \"Zodra het product genoemd wordt, is het reclame.\"\n    },\n    \"social_paid\": {\n      \"koagRequired\": true,\n      \"notes\": \"Beperkt door platformbeleid.\"\n    },\n    \"influencer\": {\n      \"koagRequired\": true,\n      \"allowed\": false,\n      \"notes\": \"Raakt A5 — niet doen.\"\n    },\n    \"pr\": {\n      \"koagRequired\": false,\n      \"notes\": \"Gesponsorde artikelen zijn wél reclame.\"\n    },\n    \"b2b\": {\n      \"koagRequired\": false,\n      \"notes\": \"Richting eindgebruiker gelden alle publieksregels alsnog.\"\n    }\n  }\n};\n\n// query komt binnen als JSON string: {\"text\": \"...\", \"channel\": \"...\", \"isPublicAd\": true}\nlet input;\ntry {\n  input = typeof query === \"string\" ? JSON.parse(query) : query;\n} catch (error) {\n  input = { text: String(query), channel: null, isPublicAd: false };\n}\n\nconst text = String(input.text || \"\");\nconst channel = input.channel || null;\nconst isPublicAd = Boolean(input.isPublicAd);\nconst findings = [];\n\nfunction scan(list) {\n  for (const entry of list) {\n    for (const pattern of entry.patterns) {\n      const regex = new RegExp(pattern, \"gi\");\n      let match;\n      while ((match = regex.exec(text)) !== null) {\n        findings.push({\n          id: entry.id,\n          rule: entry.rule,\n          severity: entry.severity,\n          why: entry.why,\n          instead: entry.instead,\n          matched: match[0],\n        });\n        if (match.index === regex.lastIndex) regex.lastIndex += 1;\n      }\n    }\n  }\n}\n\nscan(RULES.blockPatterns);\nscan(RULES.warnPatterns);\n\nif (isPublicAd) {\n  const notice = RULES.mandatoryNotice;\n  if (notice.status !== \"BEVESTIGD\") {\n    findings.push({\n      id: \"B1-onbevestigd\",\n      rule: \"B1\",\n      severity: \"block\",\n      why: \"De verplichte waarschuwingszin staat nog niet vast in rules.json.\",\n      instead: \"Haal de exacte zin bij de Keuringsraad, vul rules.json en zet status op BEVESTIGD.\",\n      matched: \"(status \" + notice.status + \")\",\n    });\n  } else if (!text.includes(notice.text)) {\n    findings.push({\n      id: \"B1-waarschuwingszin\",\n      rule: \"B1\",\n      severity: \"block\",\n      why: \"De verplichte waarschuwingszin ontbreekt letterlijk.\",\n      instead: \"Neem letterlijk op: \" + notice.text,\n      matched: \"(ontbreekt)\",\n    });\n  }\n  if (!/bijsluiter|leaflet|patient information/i.test(text)) {\n    findings.push({\n      id: \"B3-bijsluiter\",\n      rule: \"B3\",\n      severity: \"block\",\n      why: \"De aansporing om de bijsluiter te lezen ontbreekt.\",\n      instead: \"Voeg de verwijzing naar de bijsluiter toe.\",\n      matched: \"(ontbreekt)\",\n    });\n  }\n  if (!/nicotine/i.test(text)) {\n    findings.push({\n      id: \"B2-werkzame-stof\",\n      rule: \"B2\",\n      severity: \"warn\",\n      why: \"Het werkzame bestanddeel wordt niet genoemd.\",\n      instead: \"Noem nicotine bij merknaam en sterkte.\",\n      matched: \"(ontbreekt)\",\n    });\n  }\n  if (!/18\\s*\\+|18 jaar|18 and over/i.test(text)) {\n    findings.push({\n      id: \"B6-leeftijd\",\n      rule: \"B6\",\n      severity: \"warn\",\n      why: \"Geen leeftijdsvermelding (18+).\",\n      instead: \"Vermeld 18 jaar en ouder.\",\n      matched: \"(ontbreekt)\",\n    });\n  }\n}\n\nconst channelInfo = channel ? RULES.channels[channel] : null;\nif (channelInfo && channelInfo.allowed === false) {\n  findings.push({\n    id: \"D-kanaal-verboden\",\n    rule: \"D\",\n    severity: \"block\",\n    why: \"Kanaal \" + channel + \" is voor QUITTER niet toegestaan. \" + channelInfo.notes,\n    instead: \"Kies een ander kanaal.\",\n    matched: \"\",\n  });\n}\n\nconst blocks = findings.filter((f) => f.severity === \"block\");\nconst warns = findings.filter((f) => f.severity === \"warn\");\nconst verdict = blocks.length ? \"BLOCK\" : warns.length ? \"PASS_MET_WAARSCHUWINGEN\" : \"PASS\";\n\nreturn JSON.stringify({\n  verdict,\n  koagRequired: channelInfo ? channelInfo.koagRequired : null,\n  blocks,\n  warns,\n  note: \"Deze poort vervangt geen jurist en geen Keuringsraad.\",\n}, null, 2);"
+      },
+      "id": "tool-compliance",
+      "name": "Compliance-poort",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "name": "research",
+        "description": "Markt, concurrentie, zoekwoorden en actualiteit. Levert feiten met bron, nooit marketingteksten. Input: onderzoeksvraag.",
+        "workflowId": {
+          "__rl": true,
+          "value": "VUL_HIER_DE_WORKFLOW_ID_IN",
+          "mode": "id"
+        },
+        "specifyInputSchema": false
+      },
+      "id": "tool-research",
+      "name": "Specialist: research",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "name": "strategist",
+        "description": "Maakt een campagnebrief van één A4: doel, doelgroep, inzicht, boodschap, bewijs, kanaal, wat we niet zeggen, meetpunt. Input: doel en context.",
+        "workflowId": {
+          "__rl": true,
+          "value": "VUL_HIER_DE_WORKFLOW_ID_IN",
+          "mode": "id"
+        },
+        "specifyInputSchema": false
+      },
+      "id": "tool-strategist",
+      "name": "Specialist: strategist",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        290,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "name": "copywriter",
+        "description": "Schrijft advertenties, koppen, productteksten en landingspagina's. Levert vijf varianten met risico-inschatting. Input: campagnebrief, kanaal, taal, tekenlimiet.",
+        "workflowId": {
+          "__rl": true,
+          "value": "VUL_HIER_DE_WORKFLOW_ID_IN",
+          "mode": "id"
+        },
+        "specifyInputSchema": false
+      },
+      "id": "tool-copywriter",
+      "name": "Specialist: copywriter",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        420,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "name": "seo_content",
+        "description": "Schrijft artikelen voor quitter.nl over het proces van stoppen. Input: onderwerp, zoekwoord, doellengte.",
+        "workflowId": {
+          "__rl": true,
+          "value": "VUL_HIER_DE_WORKFLOW_ID_IN",
+          "mode": "id"
+        },
+        "specifyInputSchema": false
+      },
+      "id": "tool-seo_content",
+      "name": "Specialist: seo_content",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        550,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "name": "social",
+        "description": "Posts en scripts per platform (LinkedIn, Instagram, TikTok). Input: boodschap, platform, taal.",
+        "workflowId": {
+          "__rl": true,
+          "value": "VUL_HIER_DE_WORKFLOW_ID_IN",
+          "mode": "id"
+        },
+        "specifyInputSchema": false
+      },
+      "id": "tool-social",
+      "name": "Specialist: social",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "name": "email",
+        "description": "Levenscyclus- en campagnemails, inclusief de reeks dag 0 tot dag 100. Input: welke mail, doel, taal.",
+        "workflowId": {
+          "__rl": true,
+          "value": "VUL_HIER_DE_WORKFLOW_ID_IN",
+          "mode": "id"
+        },
+        "specifyInputSchema": false
+      },
+      "id": "tool-email",
+      "name": "Specialist: email",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        810,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "name": "art_director",
+        "description": "Beeldbriefings en prompts voor beeldgeneratie in de QUITTER-beeldtaal. Input: waar het beeld voor is.",
+        "workflowId": {
+          "__rl": true,
+          "value": "VUL_HIER_DE_WORKFLOW_ID_IN",
+          "mode": "id"
+        },
+        "specifyInputSchema": false
+      },
+      "id": "tool-art_director",
+      "name": "Specialist: art_director",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        940,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Jij (chat)": {
+      "main": [
+        [
+          {
+            "node": "Hoofd marketing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Hoofd marketing",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Geheugen": {
+      "ai_memory": [
+        [
+          {
+            "node": "Hoofd marketing",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compliance-poort": {
+      "ai_tool": [
+        [
+          {
+            "node": "Hoofd marketing",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Specialist: research": {
+      "ai_tool": [
+        [
+          {
+            "node": "Hoofd marketing",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Specialist: strategist": {
+      "ai_tool": [
+        [
+          {
+            "node": "Hoofd marketing",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Specialist: copywriter": {
+      "ai_tool": [
+        [
+          {
+            "node": "Hoofd marketing",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Specialist: seo_content": {
+      "ai_tool": [
+        [
+          {
+            "node": "Hoofd marketing",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Specialist: social": {
+      "ai_tool": [
+        [
+          {
+            "node": "Hoofd marketing",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Specialist: email": {
+      "ai_tool": [
+        [
+          {
+            "node": "Hoofd marketing",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Specialist: art_director": {
+      "ai_tool": [
+        [
+          {
+            "node": "Hoofd marketing",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "quitter-marketing-team",
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
