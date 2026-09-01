@@ -10,7 +10,9 @@
       "4 mg"
     ],
     "minimumAge": 18,
-    "country": "NL"
+    "country": "NL",
+    "marketingAuthorisation": "none",
+    "marketingAuthorisationNote": "none | pending | granted. Zolang dit niet 'granted' is, blokkeert de poort elke uiting die het geneesmiddel aanprijst: reclame voor een geneesmiddel zonder handelsvergunning is verboden. Merkcommunicatie over het bedrijf mag wel."
   },
   "mandatoryNotice": {
     "status": "TE_BEVESTIGEN",
@@ -274,5 +276,31 @@
       "koagRequired": false,
       "notes": "Richting eindgebruiker gelden alle publieksregels alsnog."
     }
+  },
+  "preLaunch": {
+    "id": "A10-geen-vergunning",
+    "rule": "A10",
+    "severity": "block",
+    "why": "Reclame maken voor een geneesmiddel dat nog geen handelsvergunning heeft, is verboden. Zolang QUITTER niet geregistreerd is, mag je het product niet aanprijzen — het merk en het bedrijf wel.",
+    "instead": "Schrijf over het bedrijf, het idee en het probleem. Noem geen sterktes, geen prijs, geen bestelmogelijkheid en geen productwerking. Bied een wachtlijst aan, geen aankoop.",
+    "patterns": [
+      "\\b[24]\\s?mg\\b",
+      "\\b(bestel|koop)\\s+(nu|hier|direct|vandaag)\\b",
+      "^\\s*[*#>-]*\\s*(bestellen|kopen|bestel|koop)\\s*[*_]*\\s*$",
+      "\\bnu\\s+(te\\s+koop|verkrijgbaar|leverbaar)\\b",
+      "\\bte\\s+koop\\s+(bij|vanaf)\\b",
+      "in\\s+winkelwagen",
+      "add to (cart|bag)",
+      "€\\s?\\d+[,.]\\d{2}",
+      "\\bgratis\\s+(bezorg|verzend)",
+      "\\bfree delivery\\b",
+      "\\bnicotinekauwgom\\b",
+      "\\bnicotine gum\\b"
+    ]
+  },
+  "gateIgnore": {
+    "note": "De poort leest ook briefings en interne notities in een bestand. Zet die tussen deze markers, dan slaat de controle ze over. HTML-commentaar wordt altijd overgeslagen.",
+    "start": "<!-- gate:ignore-start -->",
+    "end": "<!-- gate:ignore-end -->"
   }
 }

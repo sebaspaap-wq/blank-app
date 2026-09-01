@@ -12,8 +12,12 @@ import { check } from "./check.mjs";
 
 const cases = [
   {
-    name: "schone merktekst passeert",
-    text: "90 dagen. Eén beslissing. Een programma met 2 mg en 4 mg nicotinekauwgom.",
+    // Let op: dit is merkcommunicatie, geen productaanprijzing. Zolang er geen
+    // handelsvergunning is, blokkeert A10 elke tekst die het middel zelf aanprijst —
+    // inclusief de huidige websiteteksten. Zet product.marketingAuthorisation op
+    // "granted" zodra de vergunning er is, dan vervalt die blokkade.
+    name: "schone merkcommunicatie passeert",
+    text: "90 dagen. Eén beslissing. Een programma met een begin en een eind.",
     options: {},
     expect: "PASS",
   },
@@ -72,6 +76,38 @@ const cases = [
     options: {},
     expect: "BLOCK",
     expectIds: ["A3-statistiek"],
+  },
+  {
+    name: "productaanprijzing zonder handelsvergunning wordt geblokkeerd",
+    text: "Bestel nu QUITTER 90 met 4 mg nicotinekauwgom voor € 59,95.",
+    options: {},
+    expect: "BLOCK",
+    expectIds: ["A10-geen-vergunning"],
+  },
+  {
+    name: "merkcommunicatie zonder productaanprijzing mag wel",
+    text: "Wij bouwen een merk dat stoppen als een programma van negentig dagen behandelt. Laat je e-mailadres achter.",
+    options: {},
+    expect: "PASS",
+  },
+  {
+    name: "het woord koop in proza is geen aanprijzing",
+    text: "Nog niet te koop. Toch koop je hulp per week, doosje voor doosje.",
+    options: {},
+    expect: "PASS",
+  },
+  {
+    name: "een koopknop is dat wel",
+    text: "## Bestellen",
+    options: {},
+    expect: "BLOCK",
+    expectIds: ["A10-geen-vergunning"],
+  },
+  {
+    name: "interne notities tellen niet mee",
+    text: "Een merktekst zonder claims.\n<!-- gate:ignore-start -->\nNiet doen: 4 mg noemen, of Bestel nu.\n<!-- gate:ignore-end -->",
+    options: {},
+    expect: "PASS",
   },
   {
     name: "influencerkanaal is verboden",

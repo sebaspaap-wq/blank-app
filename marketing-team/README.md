@@ -48,6 +48,28 @@ eigen tekst goed — daarom staat er een domme, deterministische controle vóór
 | `workflows/quitter-marketing-team.n8n.json` | Het team als n8n-workflow |
 | `playbooks/` | De week, de campagnebrief, de publiceer-checklist |
 
+## Vandaag aan het werk zetten
+
+Zonder n8n, zonder opbouw. Eén commando, en de tekst gaat automatisch door de poort:
+
+```bash
+export ANTHROPIC_API_KEY=...        # of: ant auth login
+npm run marketing -- copywriter --brief "3 zoekadvertenties, 30 tekens kop" --channel search_ads
+npm run marketing -- email --brief "de mail voor dag 3" --lang nl
+npm run marketing -- social --brief "LinkedIn over waarom we programma's verkopen" --channel social_organic
+```
+
+Wat er gebeurt: de runner bouwt de systeemprompt uit `agents/`, `brand/voice.md` en de volledige
+regelset, vraagt het model om het werk, en haalt het antwoord door `check.mjs`. Blokkeert de poort,
+dan krijgt de agent de overtreden regels terug en herschrijft hij één keer. Het resultaat komt in
+`output/` te staan met het oordeel erboven — niet gepubliceerd, wachtend op jou.
+
+`--dry-run` laat de volledige systeemprompt zien zonder de API aan te roepen. Handig om te zien
+wat een agent precies meekrijgt.
+
+In `output/` staat al een complete eerste campagne: wachtlijstpagina, vijf zoekadvertenties, een
+LinkedIn-post, vijf artikelen en drie wachtlijstmails. Alle vijf door de poort.
+
 ## De poort gebruiken
 
 ```bash

@@ -50,7 +50,14 @@ function readStdin() {
 function findMatches(text, entry) {
   const hits = [];
   for (const pattern of entry.patterns) {
-    const regex = new RegExp(pattern, "gi");
+    // "m" zodat ^ en $ per regel werken; een stuk patroon dat niet compileert mag
+    // de hele poort niet omleggen — dan liever een duidelijke fout.
+    let regex;
+    try {
+      regex = new RegExp(pattern, "gim");
+    } catch (error) {
+      throw new Error(`Ongeldig patroon in regel ${entry.id}: ${pattern} (${error.message})`);
+    }
     let match;
     while ((match = regex.exec(text)) !== null) {
       const start = Math.max(0, match.index - 40);
@@ -70,11 +77,34 @@ function findMatches(text, entry) {
   return hits;
 }
 
-export function check(text, { channel = null, isPublicAd = false } = {}) {
+/**
+ * Haalt interne notities weg vóór de controle: HTML-commentaar en alles tussen de
+ * ignore-markers. Een briefing die uitlegt wat níét mag, moet de poort niet zelf
+ * als overtreding lezen.
+ */
+export function stripNotes(source) {
+  const { start, end } = rules.gateIgnore ?? {};
+  let text = source;
+  if (start && end) {
+    const escaped = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    text = text.replace(new RegExp(`${escaped(start)}[\\s\\S]*?${escaped(end)}`, "g"), " ");
+  }
+  return text.replace(/<!--[\s\S]*?-->/g, " ");
+}
+
+export function check(rawText, { channel = null, isPublicAd = false } = {}) {
+  const text = stripNotes(rawText);
   const findings = [];
 
   for (const entry of rules.blockPatterns) findings.push(...findMatches(text, entry));
   for (const entry of rules.warnPatterns) findings.push(...findMatches(text, entry));
+
+  // Zolang er geen handelsvergunning is, mag het geneesmiddel niet worden aangeprezen.
+  // Merkcommunicatie over het bedrijf mag wel — vandaar dat dit alleen op
+  // productaanprijzing aanslaat en niet op elk gebruik van de merknaam.
+  if (rules.product.marketingAuthorisation !== "granted" && rules.preLaunch) {
+    findings.push(...findMatches(text, rules.preLaunch));
+  }
 
   // Verplichte vermeldingen — alleen afdwingen voor echte publieksreclame.
   if (isPublicAd) {
