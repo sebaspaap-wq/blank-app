@@ -59,7 +59,7 @@ Top-down flat lay of exactly ninety small square tiles of pale limestone arrange
 grid of nine rows by ten columns with equal narrow grouting, resting on a warm off-white
 lime-plaster surface with fine grain. The final tile in the bottom-right corner is polished
 charcoal-grey stone, set very slightly deeper into the surface than the others. Low raking
-morning light from the upper left casts short crisp parallel shadows from every tile. Perfectly
+morning light from the upper left casts short crisp parallel shadows from every tile. Exactly
 perpendicular overhead camera, no perspective distortion, grid fills about four fifths
 of the frame, generous empty plaster around it. Medium format, 100mm lens, f/8, natural depth of
 field, true soft shadows, matte materials, architectural stillness, museum-floor calm, editorial
