@@ -116,6 +116,40 @@ node marketing-team/compliance/test.mjs
 
 Exitcode 0 = door, 1 = geblokkeerd. Daarmee kun je het in elke pipeline hangen.
 
+## Beeld: Higgsfield
+
+`image.mjs` koppelt de art-director aan Higgsfield Soul, met de merkbeeldtaal en de
+reclameregels ingebouwd.
+
+```bash
+export HF_CREDENTIALS="KEY_ID:KEY_SECRET"        # Higgsfield Cloud → credentials
+node marketing-team/image.mjs --sizes            # welke formaten er zijn
+node marketing-team/image.mjs --prompt "twee verpakkingen op een kalkstenen richel" --dry-run
+node marketing-team/image.mjs --from marketing-team/output/beeld-brief.md --alt "Twee verpakkingen"
+```
+
+Wat er gebeurt vóór er credits opgaan:
+
+1. **De vaste beeldtaal** wordt aan je prompt geplakt: warm wit, houtskool, taupe, studiolicht,
+   matte materialen — en de verboden lijst (geen sigaretten, rook, longen, artsen, mensen die het
+   product gebruiken, minderjarigen, voor-en-na).
+2. **Pre-flight op de prompt.** Vraagt je prompt om iets wat niet in beeld mag, dan stopt het
+   script vóór de aanroep. Nul credits.
+3. **De poort op de tekst.** Alt-tekst en bijschrift gaan door `check.mjs` — tekst bij een beeld
+   is nog steeds reclame.
+
+Daarna gaat het beeld naar `output/images/` met een notitie erbij: prompt, formaat, request-id,
+alt-tekst, en de regel dat een mens het moet bekijken voordat het ergens verschijnt.
+
+**Twee dingen om te weten.** Het model-eindpunt staat op `text2image/soul`; klopt dat niet voor
+jouw account, dan zegt de foutmelding dat en geef je het juiste mee met `--endpoint`. En het
+script is geschreven tegen de officiële SDK (`@higgsfield/client`, v2) maar hier nooit met echte
+credentials gedraaid — de eerste run is jouw test.
+
+**In de Studio-pagina** kan dit niet: een artifact mag geen externe diensten aanroepen. Daarom
+staat daar bij *Art direction* de knop **Kopieer als Higgsfield-prompt** — die levert exact
+dezelfde prompt, klaar om in Higgsfield te plakken.
+
 ## Het team in n8n zetten
 
 1. Importeer `workflows/quitter-marketing-team.n8n.json` (Workflows → Import from File).

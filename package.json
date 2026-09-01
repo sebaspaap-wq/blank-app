@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.123.0",
+    "@higgsfield/client": "^0.2.1",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.18",
