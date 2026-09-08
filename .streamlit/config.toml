@@ -1,0 +1,12 @@
+# Het thema van de cockpit. Zelfde kleuren als de website (quitter/brand.py),
+# zodat je in één oogopslag ziet dat je naar QUITTER kijkt.
+[theme]
+base = "dark"
+primaryColor = "#FF4B26"
+backgroundColor = "#101110"
+secondaryBackgroundColor = "#191B18"
+textColor = "#F6F3EC"
+font = "sans serif"
+
+[server]
+headless = true

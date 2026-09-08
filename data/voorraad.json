@@ -1,0 +1,12 @@
+{
+  "bijgewerkt": "2026-09-08",
+  "opmerking": "Startvoorraad is nul: er is nog niets ingekocht. Vul dit zodra de eerste levering van de fabrikant binnen is.",
+  "artikelen": [
+    {"sku": "GUM-4MG", "naam": "Kauwgom 4 mg (stuks)", "aantal": 0, "min_voorraad": 5000, "eenheid": "stuk"},
+    {"sku": "GUM-2MG", "naam": "Kauwgom 2 mg (stuks)", "aantal": 0, "min_voorraad": 6000, "eenheid": "stuk"},
+    {"sku": "TIN", "naam": "Metalen blikje met schuifhuls", "aantal": 0, "min_voorraad": 100, "eenheid": "stuk"},
+    {"sku": "DOOS", "naam": "Verzenddoos met opdruk", "aantal": 0, "min_voorraad": 100, "eenheid": "stuk"},
+    {"sku": "KAART", "naam": "Afbouwkaart (creditcardformaat)", "aantal": 0, "min_voorraad": 100, "eenheid": "stuk"},
+    {"sku": "SMPC", "naam": "Bijsluiter / SmPC", "aantal": 0, "min_voorraad": 100, "eenheid": "stuk"}
+  ]
+}
